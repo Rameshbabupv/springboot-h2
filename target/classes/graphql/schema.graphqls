@@ -1,0 +1,411 @@
+type Company {
+    id: ID!
+    tenantId: String!
+    industry: String
+    companyName: String!
+    shortName: String
+    logoUrl: String
+    addressLine1: String
+    addressLine2: String
+    country: String
+    state: String
+    city: String
+    pincode: String
+    primaryPhone: String
+    email: String
+    website: String
+    gstNumber: String
+    pan: String
+    tan: String
+    cin: String
+    incorporationDate: String
+    companyType: String
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+}
+
+type Department {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Designation {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Employee {
+    id: ID!
+    tenantId: String!
+    company: Company!
+    empId: String!
+    employeeName: String!
+    gender: String
+    dateOfBirth: String
+    dateOfJoin: String!
+    mobileNo: String
+    emailId: String
+    bloodGroup: String
+    maritalStatus: String
+    department: Department
+    designation: Designation
+    reportingManager: Employee
+    basicSalary: Float
+    grossSalary: Float
+    ctc: Float
+    aadharNo: String
+    panNo: String
+    uan: String
+    coverPf: Boolean!
+    pfNumber: String
+    coverEsi: Boolean!
+    esiNumber: String
+    employeeStatus: String
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+}
+
+type State {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type City {
+    id: ID!
+    tenantId: String!
+    cityName: String!
+    state: String!
+    pincode: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Division {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Section {
+    id: ID!
+    tenantId: String!
+    department: Department!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type JobFunction {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type EmploymentType {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Grade {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    level: Int
+    minSalary: Float
+    maxSalary: Float
+    description: String
+    isActive: Boolean!
+    createdAt: String
+}
+
+type Query {
+    # Company queries
+    companies: [Company!]!
+    company(id: ID!): Company
+    companiesByTenant(tenantId: String!): [Company!]!
+    activeCompanies: [Company!]!
+
+    # Department queries
+    departments: [Department!]!
+    department(id: ID!): Department
+    departmentsByTenant(tenantId: String!): [Department!]!
+    activeDepartments: [Department!]!
+
+    # Designation queries
+    designations: [Designation!]!
+    designation(id: ID!): Designation
+    designationsByTenant(tenantId: String!): [Designation!]!
+    activeDesignations: [Designation!]!
+
+    # Employee queries
+    employees: [Employee!]!
+    employee(id: ID!): Employee
+    employeesByTenant(tenantId: String!): [Employee!]!
+    employeesByCompany(companyId: ID!): [Employee!]!
+    employeesByDepartment(departmentId: ID!): [Employee!]!
+    activeEmployees: [Employee!]!
+    employeesByStatus(status: String!): [Employee!]!
+
+    # State queries
+    states: [State!]!
+    state(id: ID!): State
+    statesByTenant(tenantId: String!): [State!]!
+    activeStates: [State!]!
+
+    # City queries
+    cities: [City!]!
+    city(id: ID!): City
+    citiesByTenant(tenantId: String!): [City!]!
+    citiesByState(state: String!): [City!]!
+    activeCities: [City!]!
+
+    # Division queries
+    divisions: [Division!]!
+    division(id: ID!): Division
+    divisionsByTenant(tenantId: String!): [Division!]!
+    activeDivisions: [Division!]!
+
+    # Section queries
+    sections: [Section!]!
+    section(id: ID!): Section
+    sectionsByTenant(tenantId: String!): [Section!]!
+    sectionsByDepartment(departmentId: ID!): [Section!]!
+    activeSections: [Section!]!
+
+    # JobFunction queries
+    jobFunctions: [JobFunction!]!
+    jobFunction(id: ID!): JobFunction
+    jobFunctionsByTenant(tenantId: String!): [JobFunction!]!
+    activeJobFunctions: [JobFunction!]!
+
+    # EmploymentType queries
+    employmentTypes: [EmploymentType!]!
+    employmentType(id: ID!): EmploymentType
+    employmentTypesByTenant(tenantId: String!): [EmploymentType!]!
+    activeEmploymentTypes: [EmploymentType!]!
+
+    # Grade queries
+    grades: [Grade!]!
+    grade(id: ID!): Grade
+    gradesByTenant(tenantId: String!): [Grade!]!
+    activeGrades: [Grade!]!
+}
+
+input CompanyInput {
+    tenantId: String!
+    industry: String
+    companyName: String!
+    shortName: String
+    logoUrl: String
+    addressLine1: String
+    addressLine2: String
+    country: String
+    state: String
+    city: String
+    pincode: String
+    primaryPhone: String
+    email: String
+    website: String
+    gstNumber: String
+    pan: String
+    tan: String
+    cin: String
+    incorporationDate: String
+    companyType: String
+    isActive: Boolean
+}
+
+input DepartmentInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input DesignationInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input EmployeeInput {
+    tenantId: String!
+    companyId: ID!
+    empId: String!
+    employeeName: String!
+    gender: String
+    dateOfBirth: String
+    dateOfJoin: String!
+    mobileNo: String
+    emailId: String
+    bloodGroup: String
+    maritalStatus: String
+    departmentId: ID
+    designationId: ID
+    reportingManagerId: ID
+    basicSalary: Float
+    grossSalary: Float
+    ctc: Float
+    aadharNo: String
+    panNo: String
+    uan: String
+    coverPf: Boolean
+    pfNumber: String
+    coverEsi: Boolean
+    esiNumber: String
+    employeeStatus: String
+    isActive: Boolean
+}
+
+input StateInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input CityInput {
+    tenantId: String!
+    cityName: String!
+    state: String!
+    pincode: String
+    isActive: Boolean
+}
+
+input DivisionInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input SectionInput {
+    tenantId: String!
+    departmentId: ID!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input JobFunctionInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input EmploymentTypeInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+}
+
+input GradeInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    level: Int
+    minSalary: Float
+    maxSalary: Float
+    description: String
+    isActive: Boolean
+}
+
+type Mutation {
+    # Company mutations
+    createCompany(input: CompanyInput!): Company!
+    updateCompany(id: ID!, input: CompanyInput!): Company!
+    deleteCompany(id: ID!): Boolean!
+
+    # Department mutations
+    createDepartment(input: DepartmentInput!): Department!
+    updateDepartment(id: ID!, input: DepartmentInput!): Department!
+    deleteDepartment(id: ID!): Boolean!
+
+    # Designation mutations
+    createDesignation(input: DesignationInput!): Designation!
+    updateDesignation(id: ID!, input: DesignationInput!): Designation!
+    deleteDesignation(id: ID!): Boolean!
+
+    # Employee mutations
+    createEmployee(input: EmployeeInput!): Employee!
+    updateEmployee(id: ID!, input: EmployeeInput!): Employee!
+    deleteEmployee(id: ID!): Boolean!
+
+    # State mutations
+    createState(input: StateInput!): State!
+    updateState(id: ID!, input: StateInput!): State!
+    deleteState(id: ID!): Boolean!
+
+    # City mutations
+    createCity(input: CityInput!): City!
+    updateCity(id: ID!, input: CityInput!): City!
+    deleteCity(id: ID!): Boolean!
+
+    # Division mutations
+    createDivision(input: DivisionInput!): Division!
+    updateDivision(id: ID!, input: DivisionInput!): Division!
+    deleteDivision(id: ID!): Boolean!
+
+    # Section mutations
+    createSection(input: SectionInput!): Section!
+    updateSection(id: ID!, input: SectionInput!): Section!
+    deleteSection(id: ID!): Boolean!
+
+    # JobFunction mutations
+    createJobFunction(input: JobFunctionInput!): JobFunction!
+    updateJobFunction(id: ID!, input: JobFunctionInput!): JobFunction!
+    deleteJobFunction(id: ID!): Boolean!
+
+    # EmploymentType mutations
+    createEmploymentType(input: EmploymentTypeInput!): EmploymentType!
+    updateEmploymentType(id: ID!, input: EmploymentTypeInput!): EmploymentType!
+    deleteEmploymentType(id: ID!): Boolean!
+
+    # Grade mutations
+    createGrade(input: GradeInput!): Grade!
+    updateGrade(id: ID!, input: GradeInput!): Grade!
+    deleteGrade(id: ID!): Boolean!
+}
