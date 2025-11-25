@@ -1,17 +1,21 @@
 package com.hrms.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "companies")
+@Table(name = "company", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"tenant_id", "code"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,60 +25,149 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "tenant_id", nullable = false, length = 50)
     private String tenantId;
 
-    @Column(length = 100)
-    private String industry;
+    // Company Identity
+    @Column(nullable = false, unique = true, length = 20)
+    private String code;
 
-    @Column(unique = true, nullable = false)
-    private String companyName;
+    @Column(nullable = false, length = 200)
+    private String name;
 
-    @Column(length = 100)
+    @Column(name = "short_name", length = 10)
     private String shortName;
 
-    @Column(length = 500)
-    private String logoUrl;
+    @Column(length = 50)
+    private String industry;
 
+    @Column(name = "company_type", length = 50)
+    private String companyType = "Private Limited";
+
+    @Column(columnDefinition = "TEXT")
+    private String logo;
+
+    // Registered Address
+    @Column(name = "address_line1")
     private String addressLine1;
+
+    @Column(name = "address_line2")
     private String addressLine2;
-    private String country;
+
+    @Column(length = 100)
+    private String country = "India";
+
+    @Column(length = 100)
     private String state;
+
+    @Column(length = 100)
     private String city;
 
-    @Column(length = 20)
+    @Column(length = 10)
     private String pincode;
 
-    @Column(length = 20)
+    // Contact Information
+    @Column(name = "primary_phone", length = 15)
     private String primaryPhone;
 
+    @Column(name = "alternate_phone", length = 15)
+    private String alternatePhone;
+
+    @Email
+    @Column(length = 100)
     private String email;
+
+    @Column(length = 200)
     private String website;
 
-    @Column(unique = true, length = 50)
-    private String gstNumber;
+    // Primary Contact Person
+    @Column(name = "contact_name", length = 100)
+    private String contactName;
 
-    @Column(unique = true, length = 20)
-    private String pan;
+    @Column(name = "contact_designation", length = 100)
+    private String contactDesignation;
 
-    @Column(unique = true, length = 20)
-    private String tan;
+    @Column(name = "contact_email", length = 100)
+    private String contactEmail;
 
-    @Column(length = 50)
-    private String cin;
+    @Column(name = "contact_phone", length = 15)
+    private String contactPhone;
 
-    private LocalDate incorporationDate;
+    // Internal
+    @Column(name = "admin_notes", length = 500)
+    private String adminNotes;
 
-    @Column(length = 50)
-    private String companyType;
-
-    @Column(nullable = false)
+    @Column(name = "is_active")
     private Boolean isActive = true;
 
+    // Relations
+    @OneToOne(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private CompanyStatutory statutory;
+
+    @OneToOne(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private CompanyGeneralSettings generalSettings;
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<CompanyLocation> locations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<CompanyBankAccount> bankAccounts = new ArrayList<>();
+
+    // Audit
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
     @CreationTimestamp
-    @Column(updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
+
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // Helper methods
+    public void setStatutory(CompanyStatutory statutory) {
+        if (statutory == null) {
+            if (this.statutory != null) {
+                this.statutory.setCompany(null);
+            }
+        } else {
+            statutory.setCompany(this);
+        }
+        this.statutory = statutory;
+    }
+
+    public void setGeneralSettings(CompanyGeneralSettings generalSettings) {
+        if (generalSettings == null) {
+            if (this.generalSettings != null) {
+                this.generalSettings.setCompany(null);
+            }
+        } else {
+            generalSettings.setCompany(this);
+        }
+        this.generalSettings = generalSettings;
+    }
+
+    public void addLocation(CompanyLocation location) {
+        locations.add(location);
+        location.setCompany(this);
+    }
+
+    public void removeLocation(CompanyLocation location) {
+        locations.remove(location);
+        location.setCompany(null);
+    }
+
+    public void addBankAccount(CompanyBankAccount bankAccount) {
+        bankAccounts.add(bankAccount);
+        bankAccount.setCompany(this);
+    }
+
+    public void removeBankAccount(CompanyBankAccount bankAccount) {
+        bankAccounts.remove(bankAccount);
+        bankAccount.setCompany(null);
+    }
 }
