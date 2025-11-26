@@ -138,7 +138,10 @@ type Department {
     code: String!
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Designation {
@@ -148,7 +151,10 @@ type Designation {
     code: String!
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Employee {
@@ -183,24 +189,56 @@ type Employee {
     updatedAt: String
 }
 
-type State {
+type Country {
     id: ID!
     tenantId: String!
     name: String!
     code: String!
+    currencyCode: String
+    phoneCode: String
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
+}
+
+type State {
+    id: ID!
+    tenantId: String!
+    countryId: ID!
+    country: Country
+    name: String!
+    code: String!
+    stateCode: String
+    isUnionTerritory: Boolean!
+    description: String
+    isActive: Boolean!
+    createdBy: String
+    createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type City {
     id: ID!
     tenantId: String!
-    cityName: String!
-    state: String!
+    countryId: ID!
+    country: Country
+    stateId: ID!
+    state: State
+    name: String!
+    code: String!
     pincode: String
+    latitude: Float
+    longitude: Float
+    description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Division {
@@ -210,7 +248,10 @@ type Division {
     code: String!
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Section {
@@ -230,8 +271,12 @@ type JobFunction {
     name: String!
     code: String!
     description: String
+    functionGroup: String!
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type EmploymentType {
@@ -241,7 +286,10 @@ type EmploymentType {
     code: String!
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Grade {
@@ -249,12 +297,12 @@ type Grade {
     tenantId: String!
     name: String!
     code: String!
-    level: Int
-    minSalary: Float
-    maxSalary: Float
     description: String
     isActive: Boolean!
+    createdBy: String
     createdAt: String
+    updatedBy: String
+    updatedAt: String
 }
 
 type Query {
@@ -283,13 +331,17 @@ type Query {
     departments: [Department!]!
     department(id: ID!): Department
     departmentsByTenant(tenantId: String!): [Department!]!
+    activeDepartmentsByTenant(tenantId: String!): [Department!]!
     activeDepartments: [Department!]!
+    searchDepartments(tenantId: String!, searchTerm: String): [Department!]!
 
     # Designation queries
     designations: [Designation!]!
     designation(id: ID!): Designation
     designationsByTenant(tenantId: String!): [Designation!]!
+    activeDesignationsByTenant(tenantId: String!): [Designation!]!
     activeDesignations: [Designation!]!
+    searchDesignations(tenantId: String!, searchTerm: String): [Designation!]!
 
     # Employee queries
     employees: [Employee!]!
@@ -300,24 +352,43 @@ type Query {
     activeEmployees: [Employee!]!
     employeesByStatus(status: String!): [Employee!]!
 
+    # Country queries
+    countries: [Country!]!
+    country(id: ID!): Country
+    countriesByTenant(tenantId: String!): [Country!]!
+    activeCountriesByTenant(tenantId: String!): [Country!]!
+    activeCountries: [Country!]!
+    searchCountries(tenantId: String!, searchTerm: String): [Country!]!
+
     # State queries
     states: [State!]!
     state(id: ID!): State
     statesByTenant(tenantId: String!): [State!]!
+    activeStatesByTenant(tenantId: String!): [State!]!
     activeStates: [State!]!
+    statesByCountry(countryId: ID!): [State!]!
+    statesByTenantAndCountry(tenantId: String!, countryId: ID!): [State!]!
+    searchStates(tenantId: String!, searchTerm: String): [State!]!
 
     # City queries
     cities: [City!]!
     city(id: ID!): City
     citiesByTenant(tenantId: String!): [City!]!
-    citiesByState(state: String!): [City!]!
+    activeCitiesByTenant(tenantId: String!): [City!]!
     activeCities: [City!]!
+    citiesByState(stateId: ID!): [City!]!
+    citiesByTenantAndState(tenantId: String!, stateId: ID!): [City!]!
+    citiesByCountry(countryId: ID!): [City!]!
+    citiesByTenantAndCountry(tenantId: String!, countryId: ID!): [City!]!
+    searchCities(tenantId: String!, searchTerm: String): [City!]!
 
     # Division queries
     divisions: [Division!]!
     division(id: ID!): Division
     divisionsByTenant(tenantId: String!): [Division!]!
+    activeDivisionsByTenant(tenantId: String!): [Division!]!
     activeDivisions: [Division!]!
+    searchDivisions(tenantId: String!, searchTerm: String): [Division!]!
 
     # Section queries
     sections: [Section!]!
@@ -330,19 +401,24 @@ type Query {
     jobFunctions: [JobFunction!]!
     jobFunction(id: ID!): JobFunction
     jobFunctionsByTenant(tenantId: String!): [JobFunction!]!
+    activeJobFunctionsByTenant(tenantId: String!): [JobFunction!]!
     activeJobFunctions: [JobFunction!]!
+    jobFunctionsByGroup(tenantId: String!, functionGroup: String!): [JobFunction!]!
+    searchJobFunctions(tenantId: String!, searchTerm: String): [JobFunction!]!
 
     # EmploymentType queries
     employmentTypes: [EmploymentType!]!
     employmentType(id: ID!): EmploymentType
     employmentTypesByTenant(tenantId: String!): [EmploymentType!]!
     activeEmploymentTypes: [EmploymentType!]!
+    searchEmploymentTypes(tenantId: String!, searchTerm: String): [EmploymentType!]!
 
     # Grade queries
     grades: [Grade!]!
     grade(id: ID!): Grade
     gradesByTenant(tenantId: String!): [Grade!]!
     activeGrades: [Grade!]!
+    searchGrades(tenantId: String!, searchTerm: String): [Grade!]!
 }
 
 # Company Inputs
@@ -458,6 +534,8 @@ input DepartmentInput {
     code: String!
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input DesignationInput {
@@ -466,6 +544,8 @@ input DesignationInput {
     code: String!
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input EmployeeInput {
@@ -497,20 +577,44 @@ input EmployeeInput {
     isActive: Boolean
 }
 
-input StateInput {
+input CountryInput {
     tenantId: String!
     name: String!
     code: String!
+    currencyCode: String
+    phoneCode: String
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
+}
+
+input StateInput {
+    tenantId: String!
+    countryId: ID!
+    name: String!
+    code: String!
+    stateCode: String
+    isUnionTerritory: Boolean
+    description: String
+    isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input CityInput {
     tenantId: String!
-    cityName: String!
-    state: String!
+    countryId: ID!
+    stateId: ID!
+    name: String!
+    code: String!
     pincode: String
+    latitude: Float
+    longitude: Float
+    description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input DivisionInput {
@@ -519,6 +623,8 @@ input DivisionInput {
     code: String!
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input SectionInput {
@@ -535,7 +641,10 @@ input JobFunctionInput {
     name: String!
     code: String!
     description: String
+    functionGroup: String!
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input EmploymentTypeInput {
@@ -544,17 +653,18 @@ input EmploymentTypeInput {
     code: String!
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 input GradeInput {
     tenantId: String!
     name: String!
     code: String!
-    level: Int
-    minSalary: Float
-    maxSalary: Float
     description: String
     isActive: Boolean
+    createdBy: String
+    updatedBy: String
 }
 
 type Mutation {
@@ -594,6 +704,11 @@ type Mutation {
     createEmployee(input: EmployeeInput!): Employee!
     updateEmployee(id: ID!, input: EmployeeInput!): Employee!
     deleteEmployee(id: ID!): Boolean!
+
+    # Country mutations
+    createCountry(input: CountryInput!): Country!
+    updateCountry(id: ID!, input: CountryInput!): Country!
+    deleteCountry(id: ID!): Boolean!
 
     # State mutations
     createState(input: StateInput!): State!

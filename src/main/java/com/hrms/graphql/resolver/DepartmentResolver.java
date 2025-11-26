@@ -1,8 +1,9 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.request.DepartmentRequest;
 import com.hrms.entity.Department;
 import com.hrms.graphql.input.DepartmentInput;
-import com.hrms.repository.DepartmentRepository;
+import com.hrms.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -15,63 +16,65 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DepartmentResolver {
 
-    private final DepartmentRepository departmentRepository;
+    private final DepartmentService departmentService;
 
     @QueryMapping
     public List<Department> departments() {
-        return departmentRepository.findAll();
+        return departmentService.getAllDepartments();
     }
 
     @QueryMapping
     public Department department(@Argument Long id) {
-        return departmentRepository.findById(id).orElse(null);
+        return departmentService.getDepartmentById(id);
     }
 
     @QueryMapping
     public List<Department> departmentsByTenant(@Argument String tenantId) {
-        return departmentRepository.findByTenantId(tenantId);
+        return departmentService.getDepartmentsByTenant(tenantId);
+    }
+
+    @QueryMapping
+    public List<Department> activeDepartmentsByTenant(@Argument String tenantId) {
+        return departmentService.getActiveDepartmentsByTenant(tenantId);
     }
 
     @QueryMapping
     public List<Department> activeDepartments() {
-        return departmentRepository.findByIsActiveTrue();
+        return departmentService.getActiveDepartments();
+    }
+
+    @QueryMapping
+    public List<Department> searchDepartments(@Argument String tenantId, @Argument String searchTerm) {
+        return departmentService.searchDepartments(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Department createDepartment(@Argument DepartmentInput input) {
-        Department department = mapToEntity(input);
-        return departmentRepository.save(department);
+        DepartmentRequest request = mapToRequest(input);
+        return departmentService.createDepartment(request);
     }
 
     @MutationMapping
     public Department updateDepartment(@Argument Long id, @Argument DepartmentInput input) {
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Department not found"));
-
-        updateEntityFromInput(department, input);
-        return departmentRepository.save(department);
+        DepartmentRequest request = mapToRequest(input);
+        return departmentService.updateDepartment(id, request);
     }
 
     @MutationMapping
     public Boolean deleteDepartment(@Argument Long id) {
-        if (departmentRepository.existsById(id)) {
-            departmentRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        departmentService.deleteDepartment(id);
+        return true;
     }
 
-    private Department mapToEntity(DepartmentInput input) {
-        Department department = new Department();
-        updateEntityFromInput(department, input);
-        return department;
-    }
-
-    private void updateEntityFromInput(Department department, DepartmentInput input) {
-        department.setTenantId(input.getTenantId());
-        department.setName(input.getName());
-        department.setCode(input.getCode());
-        department.setDescription(input.getDescription());
-        department.setIsActive(input.getIsActive());
+    private DepartmentRequest mapToRequest(DepartmentInput input) {
+        return DepartmentRequest.builder()
+                .tenantId(input.getTenantId())
+                .name(input.getName())
+                .code(input.getCode())
+                .description(input.getDescription())
+                .isActive(input.getIsActive())
+                .createdBy(input.getCreatedBy())
+                .updatedBy(input.getUpdatedBy())
+                .build();
     }
 }

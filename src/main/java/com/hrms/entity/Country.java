@@ -10,14 +10,14 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "states", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"tenantId", "countryId", "code"}),
-    @UniqueConstraint(columnNames = {"tenantId", "countryId", "name"})
+@Table(name = "countries", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"tenantId", "code"}),
+    @UniqueConstraint(columnNames = {"tenantId", "name"})
 })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class State {
+public class Country {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,13 +26,6 @@ public class State {
     @Column(nullable = false, length = 50)
     private String tenantId;
 
-    @Column(name = "country_id", nullable = false)
-    private Long countryId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "country_id", insertable = false, updatable = false)
-    private Country country;
-
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -40,10 +33,10 @@ public class State {
     private String code;
 
     @Column(length = 10)
-    private String stateCode;
+    private String currencyCode;
 
-    @Column(nullable = false)
-    private Boolean isUnionTerritory = false;
+    @Column(length = 10)
+    private String phoneCode;
 
     @Column(length = 500)
     private String description;

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service implementation for Division operations.
+ * Service implementation for Division operations with comprehensive validation.
  */
 @Slf4j
 @Service
@@ -45,9 +45,24 @@ public class DivisionServiceImpl implements DivisionService {
     }
 
     @Override
+    public List<Division> getActiveDivisionsByTenant(String tenantId) {
+        log.debug("Fetching active divisions for tenant: {}", tenantId);
+        return divisionRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<Division> getActiveDivisions() {
         log.debug("Fetching active divisions");
         return divisionRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<Division> searchDivisions(String tenantId, String searchTerm) {
+        log.debug("Searching divisions for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveDivisionsByTenant(tenantId);
+        }
+        return divisionRepository.searchDivisions(tenantId, searchTerm.trim());
     }
 
     @Override
@@ -55,16 +70,28 @@ public class DivisionServiceImpl implements DivisionService {
     public Division createDivision(DivisionRequest request) {
         log.debug("Creating new division: {}", request.getName());
 
-        Optional<Division> existing = divisionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<Division> existingCode = divisionRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("Division", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<Division> existingName = divisionRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("Division", "name", request.getName());
         }
 
         Division division = mapToEntity(request);
         Division saved = divisionRepository.save(division);
 
-        log.info("Created division with id: {}", saved.getId());
+        log.info("Created division with id: {} for tenant: {}", saved.getId(), saved.getTenantId());
         return saved;
     }
 
@@ -75,16 +102,28 @@ public class DivisionServiceImpl implements DivisionService {
 
         Division existing = getDivisionById(id);
 
-        Optional<Division> duplicate = divisionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (excluding current record)
+        Optional<Division> duplicateCode = divisionRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("Division", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (excluding current record)
+        Optional<Division> duplicateName = divisionRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("Division", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
         Division updated = divisionRepository.save(existing);
 
-        log.info("Updated division with id: {}", id);
+        log.info("Updated division with id: {} for tenant: {}", id, updated.getTenantId());
         return updated;
     }
 
@@ -113,6 +152,8 @@ public class DivisionServiceImpl implements DivisionService {
         division.setCode(request.getCode());
         division.setDescription(request.getDescription());
         division.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        division.setCreatedBy(request.getCreatedBy());
+        division.setUpdatedBy(request.getUpdatedBy());
         return division;
     }
 
@@ -124,5 +165,6 @@ public class DivisionServiceImpl implements DivisionService {
         if (request.getIsActive() != null) {
             division.setIsActive(request.getIsActive());
         }
+        division.setUpdatedBy(request.getUpdatedBy());
     }
 }

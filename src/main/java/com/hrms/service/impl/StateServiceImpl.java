@@ -5,6 +5,7 @@ import com.hrms.entity.State;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.StateRepository;
+import com.hrms.service.CountryService;
 import com.hrms.service.StateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import java.util.Optional;
 public class StateServiceImpl implements StateService {
 
     private final StateRepository stateRepository;
+    private final CountryService countryService;
 
     @Override
     public List<State> getAllStates() {
@@ -45,9 +47,36 @@ public class StateServiceImpl implements StateService {
     }
 
     @Override
+    public List<State> getActiveStatesByTenant(String tenantId) {
+        log.debug("Fetching active states for tenant: {}", tenantId);
+        return stateRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<State> getActiveStates() {
         log.debug("Fetching active states");
         return stateRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<State> getStatesByCountry(Long countryId) {
+        log.debug("Fetching states for country: {}", countryId);
+        return stateRepository.findByCountryId(countryId);
+    }
+
+    @Override
+    public List<State> getStatesByTenantAndCountry(String tenantId, Long countryId) {
+        log.debug("Fetching states for tenant: {} and country: {}", tenantId, countryId);
+        return stateRepository.findByTenantIdAndCountryId(tenantId, countryId);
+    }
+
+    @Override
+    public List<State> searchStates(String tenantId, String searchTerm) {
+        log.debug("Searching states for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveStatesByTenant(tenantId);
+        }
+        return stateRepository.searchStates(tenantId, searchTerm);
     }
 
     @Override
@@ -55,10 +84,33 @@ public class StateServiceImpl implements StateService {
     public State createState(StateRequest request) {
         log.debug("Creating new state: {}", request.getName());
 
-        Optional<State> existing = stateRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Validate that country exists
+        if (!countryService.existsById(request.getCountryId())) {
+            throw new ResourceNotFoundException("Country", "id", request.getCountryId());
+        }
+
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<State> existingCode = stateRepository
+                .findByTenantIdAndCountryIdAndCodeIgnoreCase(
+                        request.getTenantId(),
+                        request.getCountryId(),
+                        request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("State", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<State> existingName = stateRepository
+                .findByTenantIdAndCountryIdAndNameIgnoreCase(
+                        request.getTenantId(),
+                        request.getCountryId(),
+                        request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("State", "name", request.getName());
         }
 
         State state = mapToEntity(request);
@@ -75,10 +127,33 @@ public class StateServiceImpl implements StateService {
 
         State existing = getStateById(id);
 
-        Optional<State> duplicate = stateRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Validate that country exists
+        if (!countryService.existsById(request.getCountryId())) {
+            throw new ResourceNotFoundException("Country", "id", request.getCountryId());
+        }
+
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<State> duplicateCode = stateRepository
+                .findByTenantIdAndCountryIdAndCodeIgnoreCase(
+                        request.getTenantId(),
+                        request.getCountryId(),
+                        request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("State", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<State> duplicateName = stateRepository
+                .findByTenantIdAndCountryIdAndNameIgnoreCase(
+                        request.getTenantId(),
+                        request.getCountryId(),
+                        request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("State", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
@@ -109,20 +184,30 @@ public class StateServiceImpl implements StateService {
     private State mapToEntity(StateRequest request) {
         State state = new State();
         state.setTenantId(request.getTenantId());
+        state.setCountryId(request.getCountryId());
         state.setName(request.getName());
         state.setCode(request.getCode());
+        state.setStateCode(request.getStateCode());
+        state.setIsUnionTerritory(request.getIsUnionTerritory() != null ? request.getIsUnionTerritory() : false);
         state.setDescription(request.getDescription());
         state.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        state.setCreatedBy(request.getCreatedBy());
         return state;
     }
 
     private void updateEntityFromRequest(State state, StateRequest request) {
         state.setTenantId(request.getTenantId());
+        state.setCountryId(request.getCountryId());
         state.setName(request.getName());
         state.setCode(request.getCode());
+        state.setStateCode(request.getStateCode());
+        if (request.getIsUnionTerritory() != null) {
+            state.setIsUnionTerritory(request.getIsUnionTerritory());
+        }
         state.setDescription(request.getDescription());
         if (request.getIsActive() != null) {
             state.setIsActive(request.getIsActive());
         }
+        state.setUpdatedBy(request.getUpdatedBy());
     }
 }

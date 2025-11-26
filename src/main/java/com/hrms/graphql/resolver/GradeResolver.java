@@ -1,8 +1,9 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.request.GradeRequest;
 import com.hrms.entity.Grade;
 import com.hrms.graphql.input.GradeInput;
-import com.hrms.repository.GradeRepository;
+import com.hrms.service.GradeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -15,66 +16,60 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GradeResolver {
 
-    private final GradeRepository gradeRepository;
+    private final GradeService gradeService;
 
     @QueryMapping
     public List<Grade> grades() {
-        return gradeRepository.findAll();
+        return gradeService.getAllGrades();
     }
 
     @QueryMapping
     public Grade grade(@Argument Long id) {
-        return gradeRepository.findById(id).orElse(null);
+        return gradeService.getGradeById(id);
     }
 
     @QueryMapping
     public List<Grade> gradesByTenant(@Argument String tenantId) {
-        return gradeRepository.findByTenantId(tenantId);
+        return gradeService.getGradesByTenant(tenantId);
     }
 
     @QueryMapping
     public List<Grade> activeGrades() {
-        return gradeRepository.findByIsActiveTrue();
+        return gradeService.getActiveGrades();
+    }
+
+    @QueryMapping
+    public List<Grade> searchGrades(@Argument String tenantId, @Argument String searchTerm) {
+        return gradeService.searchGrades(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Grade createGrade(@Argument GradeInput input) {
-        Grade grade = mapToEntity(input);
-        return gradeRepository.save(grade);
+        GradeRequest request = mapToRequest(input);
+        return gradeService.createGrade(request);
     }
 
     @MutationMapping
     public Grade updateGrade(@Argument Long id, @Argument GradeInput input) {
-        Grade grade = gradeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Grade not found"));
-
-        updateEntityFromInput(grade, input);
-        return gradeRepository.save(grade);
+        GradeRequest request = mapToRequest(input);
+        return gradeService.updateGrade(id, request);
     }
 
     @MutationMapping
     public Boolean deleteGrade(@Argument Long id) {
-        if (gradeRepository.existsById(id)) {
-            gradeRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        gradeService.deleteGrade(id);
+        return true;
     }
 
-    private Grade mapToEntity(GradeInput input) {
-        Grade grade = new Grade();
-        updateEntityFromInput(grade, input);
-        return grade;
-    }
-
-    private void updateEntityFromInput(Grade grade, GradeInput input) {
-        grade.setTenantId(input.getTenantId());
-        grade.setName(input.getName());
-        grade.setCode(input.getCode());
-        grade.setLevel(input.getLevel());
-        grade.setMinSalary(input.getMinSalary());
-        grade.setMaxSalary(input.getMaxSalary());
-        grade.setDescription(input.getDescription());
-        grade.setIsActive(input.getIsActive());
+    private GradeRequest mapToRequest(GradeInput input) {
+        return GradeRequest.builder()
+                .tenantId(input.getTenantId())
+                .name(input.getName())
+                .code(input.getCode())
+                .description(input.getDescription())
+                .isActive(input.getIsActive())
+                .createdBy(input.getCreatedBy())
+                .updatedBy(input.getUpdatedBy())
+                .build();
     }
 }

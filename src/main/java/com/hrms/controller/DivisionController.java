@@ -53,6 +53,22 @@ public class DivisionController {
         return ResponseEntity.ok(ApiResponse.success("Active divisions fetched successfully", divisions));
     }
 
+    @GetMapping("/tenant/{tenantId}/active")
+    @Operation(summary = "Get active divisions by tenant ID")
+    public ResponseEntity<ApiResponse<List<Division>>> getActiveDivisionsByTenant(@PathVariable String tenantId) {
+        List<Division> divisions = divisionService.getActiveDivisionsByTenant(tenantId);
+        return ResponseEntity.ok(ApiResponse.success("Active divisions fetched successfully", divisions));
+    }
+
+    @GetMapping("/tenant/{tenantId}/search")
+    @Operation(summary = "Search divisions by name, code, or description")
+    public ResponseEntity<ApiResponse<List<Division>>> searchDivisions(
+            @PathVariable String tenantId,
+            @RequestParam(required = false) String searchTerm) {
+        List<Division> divisions = divisionService.searchDivisions(tenantId, searchTerm);
+        return ResponseEntity.ok(ApiResponse.success("Divisions search completed successfully", divisions));
+    }
+
     @PostMapping
     @Operation(summary = "Create a new division")
     public ResponseEntity<ApiResponse<Division>> createDivision(@Valid @RequestBody DivisionRequest request) {

@@ -16,7 +16,11 @@ public interface DesignationService {
 
     List<Designation> getDesignationsByTenant(String tenantId);
 
+    List<Designation> getActiveDesignationsByTenant(String tenantId);
+
     List<Designation> getActiveDesignations();
+
+    List<Designation> searchDesignations(String tenantId, String searchTerm);
 
     Designation createDesignation(DesignationRequest request);
 

@@ -45,9 +45,24 @@ public class DesignationServiceImpl implements DesignationService {
     }
 
     @Override
+    public List<Designation> getActiveDesignationsByTenant(String tenantId) {
+        log.debug("Fetching active designations for tenant: {}", tenantId);
+        return designationRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<Designation> getActiveDesignations() {
         log.debug("Fetching active designations");
         return designationRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<Designation> searchDesignations(String tenantId, String searchTerm) {
+        log.debug("Searching designations for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveDesignationsByTenant(tenantId);
+        }
+        return designationRepository.searchDesignations(tenantId, searchTerm);
     }
 
     @Override
@@ -55,11 +70,22 @@ public class DesignationServiceImpl implements DesignationService {
     public Designation createDesignation(DesignationRequest request) {
         log.debug("Creating new designation: {}", request.getName());
 
-        // Check for duplicate code within tenant
-        Optional<Designation> existing = designationRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<Designation> existingCode = designationRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("Designation", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<Designation> existingName = designationRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("Designation", "name", request.getName());
         }
 
         Designation designation = mapToEntity(request);
@@ -76,11 +102,22 @@ public class DesignationServiceImpl implements DesignationService {
 
         Designation existing = getDesignationById(id);
 
-        // Check for duplicate code within tenant (exclude current entity)
-        Optional<Designation> duplicate = designationRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (exclude current entity)
+        Optional<Designation> duplicateCode = designationRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("Designation", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (exclude current entity)
+        Optional<Designation> duplicateName = designationRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("Designation", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
@@ -115,6 +152,7 @@ public class DesignationServiceImpl implements DesignationService {
         designation.setCode(request.getCode());
         designation.setDescription(request.getDescription());
         designation.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        designation.setCreatedBy(request.getCreatedBy());
         return designation;
     }
 
@@ -126,5 +164,6 @@ public class DesignationServiceImpl implements DesignationService {
         if (request.getIsActive() != null) {
             designation.setIsActive(request.getIsActive());
         }
+        designation.setUpdatedBy(request.getUpdatedBy());
     }
 }

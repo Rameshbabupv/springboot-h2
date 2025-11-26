@@ -16,7 +16,11 @@ public interface DepartmentService {
 
     List<Department> getDepartmentsByTenant(String tenantId);
 
+    List<Department> getActiveDepartmentsByTenant(String tenantId);
+
     List<Department> getActiveDepartments();
+
+    List<Department> searchDepartments(String tenantId, String searchTerm);
 
     Department createDepartment(DepartmentRequest request);
 

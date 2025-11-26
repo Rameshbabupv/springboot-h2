@@ -64,10 +64,30 @@ public class SectionServiceImpl implements SectionService {
     public Section createSection(SectionRequest request) {
         log.debug("Creating new section: {}", request.getName());
 
-        Optional<Section> existing = sectionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (department-scoped)
+        Optional<Section> existingCode = sectionRepository
+                .findByTenantIdAndDepartmentIdAndCodeIgnoreCase(
+                    request.getTenantId(),
+                    request.getDepartmentId(),
+                    request.getCode()
+                );
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("Section", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (department-scoped)
+        Optional<Section> existingName = sectionRepository
+                .findByTenantIdAndDepartmentIdAndNameIgnoreCase(
+                    request.getTenantId(),
+                    request.getDepartmentId(),
+                    request.getName()
+                );
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("Section", "name", request.getName());
         }
 
         Section section = mapToEntity(request);
@@ -84,10 +104,30 @@ public class SectionServiceImpl implements SectionService {
 
         Section existing = getSectionById(id);
 
-        Optional<Section> duplicate = sectionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (department-scoped, exclude current entity)
+        Optional<Section> duplicateCode = sectionRepository
+                .findByTenantIdAndDepartmentIdAndCodeIgnoreCase(
+                    request.getTenantId(),
+                    request.getDepartmentId(),
+                    request.getCode()
+                );
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("Section", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (department-scoped, exclude current entity)
+        Optional<Section> duplicateName = sectionRepository
+                .findByTenantIdAndDepartmentIdAndNameIgnoreCase(
+                    request.getTenantId(),
+                    request.getDepartmentId(),
+                    request.getName()
+                );
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("Section", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);

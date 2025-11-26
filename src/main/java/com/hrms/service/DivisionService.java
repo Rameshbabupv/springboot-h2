@@ -16,7 +16,11 @@ public interface DivisionService {
 
     List<Division> getDivisionsByTenant(String tenantId);
 
+    List<Division> getActiveDivisionsByTenant(String tenantId);
+
     List<Division> getActiveDivisions();
+
+    List<Division> searchDivisions(String tenantId, String searchTerm);
 
     Division createDivision(DivisionRequest request);
 

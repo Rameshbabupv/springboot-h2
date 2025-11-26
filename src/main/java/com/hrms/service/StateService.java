@@ -16,7 +16,15 @@ public interface StateService {
 
     List<State> getStatesByTenant(String tenantId);
 
+    List<State> getActiveStatesByTenant(String tenantId);
+
     List<State> getActiveStates();
+
+    List<State> getStatesByCountry(Long countryId);
+
+    List<State> getStatesByTenantAndCountry(String tenantId, Long countryId);
+
+    List<State> searchStates(String tenantId, String searchTerm);
 
     State createState(StateRequest request);
 

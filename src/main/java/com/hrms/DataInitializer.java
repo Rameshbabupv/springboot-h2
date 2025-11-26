@@ -26,6 +26,7 @@ public class DataInitializer implements CommandLineRunner {
     private final GradeRepository gradeRepository;
     private final CityRepository cityRepository;
     private final StateRepository stateRepository;
+    private final CountryRepository countryRepository;
 
     @Override
     public void run(String... args) {
@@ -38,25 +39,28 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // Sample data creation enabled
+        log.info("Creating Country...");
+        Country india = createCountry("India", "IN", "INR", "+91", "Republic of India");
+
         log.info("Creating States...");
-        State tn = createState("Tamil Nadu", "TN", "Southernmost state");
-        State ka = createState("Karnataka", "KA", "Silicon Valley of India");
-        State kl = createState("Kerala", "KL", "God's Own Country");
-        State ap = createState("Andhra Pradesh", "AP", "Rice bowl of India");
-        State ts = createState("Telangana", "TS", "State of the Telugus");
+        State tn = createState("Tamil Nadu", "TN", india.getId(), "Southernmost state");
+        State ka = createState("Karnataka", "KA", india.getId(), "Silicon Valley of India");
+        State kl = createState("Kerala", "KL", india.getId(), "God's Own Country");
+        State ap = createState("Andhra Pradesh", "AP", india.getId(), "Rice bowl of India");
+        State ts = createState("Telangana", "TS", india.getId(), "State of the Telugus");
 
         // Create Cities
         log.info("Creating Cities...");
-        City chennai = createCity("Chennai", "Tamil Nadu", "600001");
-        City coimbatore = createCity("Coimbatore", "Tamil Nadu", "641001");
-        City madurai = createCity("Madurai", "Tamil Nadu", "625001");
-        City bangalore = createCity("Bangalore", "Karnataka", "560001");
-        City mysore = createCity("Mysore", "Karnataka", "570001");
-        City kochi = createCity("Kochi", "Kerala", "682001");
-        City trivandrum = createCity("Trivandrum", "Kerala", "695001");
-        City hyderabad = createCity("Hyderabad", "Telangana", "500001");
-        City vijayawada = createCity("Vijayawada", "Andhra Pradesh", "520001");
-        City visakhapatnam = createCity("Visakhapatnam", "Andhra Pradesh", "530001");
+        City chennai = createCity("Chennai", "CHN", india.getId(), tn.getId(), "600001");
+        City coimbatore = createCity("Coimbatore", "CBE", india.getId(), tn.getId(), "641001");
+        City madurai = createCity("Madurai", "MDU", india.getId(), tn.getId(), "625001");
+        City bangalore = createCity("Bangalore", "BLR", india.getId(), ka.getId(), "560001");
+        City mysore = createCity("Mysore", "MYS", india.getId(), ka.getId(), "570001");
+        City kochi = createCity("Kochi", "COK", india.getId(), kl.getId(), "682001");
+        City trivandrum = createCity("Trivandrum", "TRV", india.getId(), kl.getId(), "695001");
+        City hyderabad = createCity("Hyderabad", "HYD", india.getId(), ts.getId(), "500001");
+        City vijayawada = createCity("Vijayawada", "VJA", india.getId(), ap.getId(), "520001");
+        City visakhapatnam = createCity("Visakhapatnam", "VTZ", india.getId(), ap.getId(), "530001");
 
         // Create Companies
         log.info("Creating Companies...");
@@ -134,11 +138,11 @@ public class DataInitializer implements CommandLineRunner {
 
         // Create Grades
         log.info("Creating Grades...");
-        Grade gradeG1 = createGrade("Grade G1", "G1", "Entry Level", 1, new BigDecimal("300000"), new BigDecimal("500000"));
-        Grade gradeG2 = createGrade("Grade G2", "G2", "Junior Level", 2, new BigDecimal("500000"), new BigDecimal("800000"));
-        Grade gradeG3 = createGrade("Grade G3", "G3", "Mid Level", 3, new BigDecimal("800000"), new BigDecimal("1200000"));
-        Grade gradeG4 = createGrade("Grade G4", "G4", "Senior Level", 4, new BigDecimal("1200000"), new BigDecimal("1800000"));
-        Grade gradeG5 = createGrade("Grade G5", "G5", "Lead Level", 5, new BigDecimal("1800000"), new BigDecimal("2500000"));
+        Grade gradeG1 = createGrade("Grade G1", "G1", "Entry Level");
+        Grade gradeG2 = createGrade("Grade G2", "G2", "Junior Level");
+        Grade gradeG3 = createGrade("Grade G3", "G3", "Mid Level");
+        Grade gradeG4 = createGrade("Grade G4", "G4", "Senior Level");
+        Grade gradeG5 = createGrade("Grade G5", "G5", "Lead Level");
 
         // Create Designations
         log.info("Creating Designations...");
@@ -369,9 +373,24 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Total Employees: {}", employeeRepository.count());
     }
 
-    private State createState(String name, String code, String description) {
+    private Country createCountry(String name, String code, String currencyCode, String phoneCode, String description) {
+        Country country = new Country();
+        country.setTenantId("TENANT001");
+        country.setName(name);
+        country.setCode(code);
+        country.setCurrencyCode(currencyCode);
+        country.setPhoneCode(phoneCode);
+        country.setDescription(description);
+        country.setIsActive(true);
+        country = countryRepository.save(country);
+        log.info("Created country: {}", country.getName());
+        return country;
+    }
+
+    private State createState(String name, String code, Long countryId, String description) {
         State state = new State();
         state.setTenantId("TENANT001");
+        state.setCountryId(countryId);
         state.setName(name);
         state.setCode(code);
         state.setDescription(description);
@@ -381,16 +400,17 @@ public class DataInitializer implements CommandLineRunner {
         return state;
     }
 
-    private City createCity(String cityName, String state, String pincode) {
+    private City createCity(String name, String code, Long countryId, Long stateId, String pincode) {
         City city = new City();
         city.setTenantId("TENANT001");
-        city.setCityName(cityName);
-        city.setState(state);
-        city.setCountry("India");
+        city.setName(name);
+        city.setCode(code);
+        city.setCountryId(countryId);
+        city.setStateId(stateId);
         city.setPincode(pincode);
         city.setIsActive(true);
         city = cityRepository.save(city);
-        log.info("Created city: {}", city.getCityName());
+        log.info("Created city: {}", city.getName());
         return city;
     }
 
@@ -455,15 +475,12 @@ public class DataInitializer implements CommandLineRunner {
         return employmentType;
     }
 
-    private Grade createGrade(String name, String code, String description, Integer level, BigDecimal minSalary, BigDecimal maxSalary) {
+    private Grade createGrade(String name, String code, String description) {
         Grade grade = new Grade();
         grade.setTenantId("TENANT001");
         grade.setName(name);
         grade.setCode(code);
         grade.setDescription(description);
-        grade.setLevel(level);
-        grade.setMinSalary(minSalary);
-        grade.setMaxSalary(maxSalary);
         grade.setIsActive(true);
         grade = gradeRepository.save(grade);
         log.info("Created grade: {}", grade.getName());

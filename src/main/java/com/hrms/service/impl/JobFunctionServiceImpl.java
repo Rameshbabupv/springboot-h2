@@ -45,9 +45,30 @@ public class JobFunctionServiceImpl implements JobFunctionService {
     }
 
     @Override
+    public List<JobFunction> getActiveJobFunctionsByTenant(String tenantId) {
+        log.debug("Fetching active job functions for tenant: {}", tenantId);
+        return jobFunctionRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<JobFunction> getActiveJobFunctions() {
         log.debug("Fetching active job functions");
         return jobFunctionRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<JobFunction> getJobFunctionsByGroup(String tenantId, String functionGroup) {
+        log.debug("Fetching job functions for tenant: {} and group: {}", tenantId, functionGroup);
+        return jobFunctionRepository.findByTenantIdAndFunctionGroup(tenantId, functionGroup);
+    }
+
+    @Override
+    public List<JobFunction> searchJobFunctions(String tenantId, String searchTerm) {
+        log.debug("Searching job functions for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveJobFunctionsByTenant(tenantId);
+        }
+        return jobFunctionRepository.searchJobFunctions(tenantId, searchTerm);
     }
 
     @Override
@@ -55,10 +76,22 @@ public class JobFunctionServiceImpl implements JobFunctionService {
     public JobFunction createJobFunction(JobFunctionRequest request) {
         log.debug("Creating new job function: {}", request.getName());
 
-        Optional<JobFunction> existing = jobFunctionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<JobFunction> existingCode = jobFunctionRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("JobFunction", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<JobFunction> existingName = jobFunctionRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("JobFunction", "name", request.getName());
         }
 
         JobFunction jobFunction = mapToEntity(request);
@@ -75,10 +108,22 @@ public class JobFunctionServiceImpl implements JobFunctionService {
 
         JobFunction existing = getJobFunctionById(id);
 
-        Optional<JobFunction> duplicate = jobFunctionRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (exclude current entity)
+        Optional<JobFunction> duplicateCode = jobFunctionRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("JobFunction", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (exclude current entity)
+        Optional<JobFunction> duplicateName = jobFunctionRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("JobFunction", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
@@ -112,7 +157,9 @@ public class JobFunctionServiceImpl implements JobFunctionService {
         jobFunction.setName(request.getName());
         jobFunction.setCode(request.getCode());
         jobFunction.setDescription(request.getDescription());
+        jobFunction.setFunctionGroup(request.getFunctionGroup());
         jobFunction.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        jobFunction.setCreatedBy(request.getCreatedBy());
         return jobFunction;
     }
 
@@ -121,8 +168,10 @@ public class JobFunctionServiceImpl implements JobFunctionService {
         jobFunction.setName(request.getName());
         jobFunction.setCode(request.getCode());
         jobFunction.setDescription(request.getDescription());
+        jobFunction.setFunctionGroup(request.getFunctionGroup());
         if (request.getIsActive() != null) {
             jobFunction.setIsActive(request.getIsActive());
         }
+        jobFunction.setUpdatedBy(request.getUpdatedBy());
     }
 }

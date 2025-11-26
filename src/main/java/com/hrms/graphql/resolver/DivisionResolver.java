@@ -1,8 +1,9 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.request.DivisionRequest;
 import com.hrms.entity.Division;
 import com.hrms.graphql.input.DivisionInput;
-import com.hrms.repository.DivisionRepository;
+import com.hrms.service.DivisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -15,63 +16,65 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DivisionResolver {
 
-    private final DivisionRepository divisionRepository;
+    private final DivisionService divisionService;
 
     @QueryMapping
     public List<Division> divisions() {
-        return divisionRepository.findAll();
+        return divisionService.getAllDivisions();
     }
 
     @QueryMapping
     public Division division(@Argument Long id) {
-        return divisionRepository.findById(id).orElse(null);
+        return divisionService.getDivisionById(id);
     }
 
     @QueryMapping
     public List<Division> divisionsByTenant(@Argument String tenantId) {
-        return divisionRepository.findByTenantId(tenantId);
+        return divisionService.getDivisionsByTenant(tenantId);
+    }
+
+    @QueryMapping
+    public List<Division> activeDivisionsByTenant(@Argument String tenantId) {
+        return divisionService.getActiveDivisionsByTenant(tenantId);
     }
 
     @QueryMapping
     public List<Division> activeDivisions() {
-        return divisionRepository.findByIsActiveTrue();
+        return divisionService.getActiveDivisions();
+    }
+
+    @QueryMapping
+    public List<Division> searchDivisions(@Argument String tenantId, @Argument String searchTerm) {
+        return divisionService.searchDivisions(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Division createDivision(@Argument DivisionInput input) {
-        Division division = mapToEntity(input);
-        return divisionRepository.save(division);
+        DivisionRequest request = mapToRequest(input);
+        return divisionService.createDivision(request);
     }
 
     @MutationMapping
     public Division updateDivision(@Argument Long id, @Argument DivisionInput input) {
-        Division division = divisionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Division not found"));
-
-        updateEntityFromInput(division, input);
-        return divisionRepository.save(division);
+        DivisionRequest request = mapToRequest(input);
+        return divisionService.updateDivision(id, request);
     }
 
     @MutationMapping
     public Boolean deleteDivision(@Argument Long id) {
-        if (divisionRepository.existsById(id)) {
-            divisionRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        divisionService.deleteDivision(id);
+        return true;
     }
 
-    private Division mapToEntity(DivisionInput input) {
-        Division division = new Division();
-        updateEntityFromInput(division, input);
-        return division;
-    }
-
-    private void updateEntityFromInput(Division division, DivisionInput input) {
-        division.setTenantId(input.getTenantId());
-        division.setName(input.getName());
-        division.setCode(input.getCode());
-        division.setDescription(input.getDescription());
-        division.setIsActive(input.getIsActive());
+    private DivisionRequest mapToRequest(DivisionInput input) {
+        return DivisionRequest.builder()
+                .tenantId(input.getTenantId())
+                .name(input.getName())
+                .code(input.getCode())
+                .description(input.getDescription())
+                .isActive(input.getIsActive())
+                .createdBy(input.getCreatedBy())
+                .updatedBy(input.getUpdatedBy())
+                .build();
     }
 }

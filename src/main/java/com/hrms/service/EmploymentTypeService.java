@@ -16,7 +16,11 @@ public interface EmploymentTypeService {
 
     List<EmploymentType> getEmploymentTypesByTenant(String tenantId);
 
+    List<EmploymentType> getActiveEmploymentTypesByTenant(String tenantId);
+
     List<EmploymentType> getActiveEmploymentTypes();
+
+    List<EmploymentType> searchEmploymentTypes(String tenantId, String searchTerm);
 
     EmploymentType createEmploymentType(EmploymentTypeRequest request);
 
