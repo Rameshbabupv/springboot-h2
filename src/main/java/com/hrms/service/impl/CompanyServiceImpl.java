@@ -320,6 +320,7 @@ public class CompanyServiceImpl implements CompanyService {
         company.setName(request.getName());
         company.setShortName(request.getShortName());
         company.setIndustry(request.getIndustry());
+        company.setIndustryDescription(request.getIndustryDescription());
         company.setCompanyType(request.getCompanyType());
         company.setLogo(request.getLogo());
         company.setAddressLine1(request.getAddressLine1());
@@ -347,6 +348,7 @@ public class CompanyServiceImpl implements CompanyService {
         company.setName(request.getName());
         company.setShortName(request.getShortName());
         company.setIndustry(request.getIndustry());
+        company.setIndustryDescription(request.getIndustryDescription());
         company.setCompanyType(request.getCompanyType());
         company.setLogo(request.getLogo());
         company.setAddressLine1(request.getAddressLine1());

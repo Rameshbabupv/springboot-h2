@@ -41,6 +41,9 @@ public class Company {
     @Column(length = 50)
     private String industry;
 
+    @Column(name = "industry_description", length = 255)
+    private String industryDescription;
+
     @Column(name = "company_type", length = 50)
     private String companyType = "Private Limited";
 

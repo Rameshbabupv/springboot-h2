@@ -212,6 +212,7 @@ public class CompanyResolver {
                 .name(input.getName())
                 .shortName(input.getShortName())
                 .industry(input.getIndustry())
+                .industryDescription(input.getIndustryDescription())
                 .companyType(input.getCompanyType())
                 .logo(input.getLogoUrl())
                 .addressLine1(input.getAddressLine1())

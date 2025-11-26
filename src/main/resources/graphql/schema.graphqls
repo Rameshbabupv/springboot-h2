@@ -6,6 +6,7 @@ type Company {
     name: String!
     shortName: String
     industry: String
+    industryDescription: String
     companyType: String
     incorporationDate: String
     logoUrl: String
@@ -351,6 +352,7 @@ input CompanyInput {
     name: String!
     shortName: String
     industry: String
+    industryDescription: String
     companyType: String
     incorporationDate: String
     logoUrl: String

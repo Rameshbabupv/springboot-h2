@@ -33,6 +33,9 @@ public class CompanyRequest {
 
     private String industry;
 
+    @Size(max = 255, message = "Industry description must not exceed 255 characters")
+    private String industryDescription;
+
     private String companyType;
 
     private String logo;

@@ -18,6 +18,9 @@ public class CompanyInput {
     @JsonProperty("industry")
     private String industry;
 
+    @JsonProperty("industryDescription")
+    private String industryDescription;
+
     @JsonProperty("companyType")
     private String companyType;
 
@@ -94,6 +97,9 @@ public class CompanyInput {
 
     public String getIndustry() { return industry; }
     public void setIndustry(String industry) { this.industry = industry; }
+
+    public String getIndustryDescription() { return industryDescription; }
+    public void setIndustryDescription(String industryDescription) { this.industryDescription = industryDescription; }
 
     public String getCompanyType() { return companyType; }
     public void setCompanyType(String companyType) { this.companyType = companyType; }
