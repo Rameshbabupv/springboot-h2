@@ -157,37 +157,7 @@ type Designation {
     updatedAt: String
 }
 
-type Employee {
-    id: ID!
-    tenantId: String!
-    company: Company!
-    empId: String!
-    employeeName: String!
-    gender: String
-    dateOfBirth: String
-    dateOfJoin: String!
-    mobileNo: String
-    emailId: String
-    bloodGroup: String
-    maritalStatus: String
-    department: Department
-    designation: Designation
-    reportingManager: Employee
-    basicSalary: Float
-    grossSalary: Float
-    ctc: Float
-    aadharNo: String
-    panNo: String
-    uan: String
-    coverPf: Boolean!
-    pfNumber: String
-    coverEsi: Boolean!
-    esiNumber: String
-    employeeStatus: String
-    isActive: Boolean!
-    createdAt: String
-    updatedAt: String
-}
+# Employee type moved to employee.graphqls for complete 78-field definition
 
 type Country {
     id: ID!
@@ -305,6 +275,92 @@ type Grade {
     updatedAt: String
 }
 
+# Employee Template Types
+type EmployeeTemplate {
+    id: ID!
+    tenantId: String!
+    templateName: String!
+    templateCode: String!
+    description: String
+    applicableCategories: [String!]
+    applicableGroups: [String!]
+    applicableGrades: [String!]
+    applicableCompanies: [ID!]
+    applicableLocations: [ID!]
+    isDefault: Boolean!
+    isActive: Boolean!
+    priority: Int!
+    version: String
+    effectiveFrom: String
+    effectiveTo: String
+    createdBy: ID
+    createdAt: String!
+    updatedBy: ID
+    updatedAt: String!
+    sections: [EmployeeTemplateSection!]
+}
+
+type EmployeeTemplateSection {
+    id: ID!
+    templateId: ID!
+    sectionName: String!
+    sectionCode: String!
+    sectionDescription: String
+    sectionOrder: Int!
+    sectionIcon: String
+    isCollapsible: Boolean!
+    isExpandedByDefault: Boolean!
+    conditionalLogic: String
+    createdAt: String!
+    updatedAt: String!
+    fields: [EmployeeTemplateField!]
+}
+
+type FieldDefinitionMaster {
+    id: ID!
+    tenantId: String!
+    fieldName: String!
+    fieldLabel: String!
+    fieldCode: String
+    fieldType: String!
+    fieldCategory: String
+    dataType: String!
+    validationRules: String
+    dropdownOptions: String
+    isSystemField: Boolean!
+    isCustomField: Boolean!
+    isSearchable: Boolean!
+    isRequiredByDefault: Boolean!
+    helpText: String
+    placeholderText: String
+    status: String!
+    createdBy: ID
+    createdAt: String!
+    updatedBy: ID
+    updatedAt: String!
+}
+
+type EmployeeTemplateField {
+    id: ID!
+    templateId: ID!
+    sectionId: ID!
+    fieldId: ID!
+    fieldDefinition: FieldDefinitionMaster
+    displayOrder: Int!
+    displayWidth: String!
+    isRequired: Boolean!
+    isReadonly: Boolean!
+    isVisible: Boolean!
+    isEditable: Boolean!
+    labelOverride: String
+    helpTextOverride: String
+    validationOverride: String
+    defaultValue: String
+    conditionalLogic: String
+    createdAt: String!
+    updatedAt: String!
+}
+
 type Query {
     # Company queries
     companies: [Company!]!
@@ -343,14 +399,7 @@ type Query {
     activeDesignations: [Designation!]!
     searchDesignations(tenantId: String!, searchTerm: String): [Designation!]!
 
-    # Employee queries
-    employees: [Employee!]!
-    employee(id: ID!): Employee
-    employeesByTenant(tenantId: String!): [Employee!]!
-    employeesByCompany(companyId: ID!): [Employee!]!
-    employeesByDepartment(departmentId: ID!): [Employee!]!
-    activeEmployees: [Employee!]!
-    employeesByStatus(status: String!): [Employee!]!
+    # Employee queries moved to employee.graphqls
 
     # Country queries
     countries: [Country!]!
@@ -419,6 +468,26 @@ type Query {
     gradesByTenant(tenantId: String!): [Grade!]!
     activeGrades: [Grade!]!
     searchGrades(tenantId: String!, searchTerm: String): [Grade!]!
+
+    # Employee Template queries
+    employeeTemplates(tenantId: String!): [EmployeeTemplate!]!
+    employeeTemplate(id: ID!): EmployeeTemplate
+    activeEmployeeTemplates(tenantId: String!): [EmployeeTemplate!]!
+
+    # Employee Template Section queries
+    employeeTemplateSections(templateId: ID!): [EmployeeTemplateSection!]!
+    employeeTemplateSection(id: ID!): EmployeeTemplateSection
+
+    # Field Definition Master queries
+    fieldDefinitions(tenantId: String!): [FieldDefinitionMaster!]!
+    fieldDefinition(id: ID!): FieldDefinitionMaster
+    fieldDefinitionsByCategory(tenantId: String!, category: String!): [FieldDefinitionMaster!]!
+    systemFieldDefinitions(tenantId: String!): [FieldDefinitionMaster!]!
+    customFieldDefinitions(tenantId: String!): [FieldDefinitionMaster!]!
+
+    # Employee Template Field queries
+    employeeTemplateFields(sectionId: ID!): [EmployeeTemplateField!]!
+    employeeTemplateField(id: ID!): EmployeeTemplateField
 }
 
 # Company Inputs
@@ -548,34 +617,7 @@ input DesignationInput {
     updatedBy: String
 }
 
-input EmployeeInput {
-    tenantId: String!
-    companyId: ID!
-    empId: String!
-    employeeName: String!
-    gender: String
-    dateOfBirth: String
-    dateOfJoin: String!
-    mobileNo: String
-    emailId: String
-    bloodGroup: String
-    maritalStatus: String
-    departmentId: ID
-    designationId: ID
-    reportingManagerId: ID
-    basicSalary: Float
-    grossSalary: Float
-    ctc: Float
-    aadharNo: String
-    panNo: String
-    uan: String
-    coverPf: Boolean
-    pfNumber: String
-    coverEsi: Boolean
-    esiNumber: String
-    employeeStatus: String
-    isActive: Boolean
-}
+# EmployeeInput moved to employee.graphqls for complete 78-field definition
 
 input CountryInput {
     tenantId: String!
@@ -667,6 +709,77 @@ input GradeInput {
     updatedBy: String
 }
 
+# Employee Template Inputs
+input EmployeeTemplateInput {
+    tenantId: String!
+    templateName: String!
+    templateCode: String!
+    description: String
+    applicableCategories: [String!]
+    applicableGroups: [String!]
+    applicableGrades: [String!]
+    applicableCompanies: [ID!]
+    applicableLocations: [ID!]
+    isDefault: Boolean
+    isActive: Boolean
+    priority: Int
+    version: String
+    effectiveFrom: String
+    effectiveTo: String
+    createdBy: ID
+    updatedBy: ID
+}
+
+input EmployeeTemplateSectionInput {
+    templateId: ID!
+    sectionName: String!
+    sectionCode: String!
+    sectionDescription: String
+    sectionOrder: Int!
+    sectionIcon: String
+    isCollapsible: Boolean
+    isExpandedByDefault: Boolean
+    conditionalLogic: String
+}
+
+input FieldDefinitionMasterInput {
+    tenantId: String!
+    fieldName: String!
+    fieldLabel: String!
+    fieldCode: String
+    fieldType: String!
+    fieldCategory: String
+    dataType: String!
+    validationRules: String
+    dropdownOptions: String
+    isSystemField: Boolean
+    isCustomField: Boolean
+    isSearchable: Boolean
+    isRequiredByDefault: Boolean
+    helpText: String
+    placeholderText: String
+    status: String
+    createdBy: ID
+    updatedBy: ID
+}
+
+input EmployeeTemplateFieldInput {
+    templateId: ID!
+    sectionId: ID!
+    fieldId: ID!
+    displayOrder: Int!
+    displayWidth: String
+    isRequired: Boolean
+    isReadonly: Boolean
+    isVisible: Boolean
+    isEditable: Boolean
+    labelOverride: String
+    helpTextOverride: String
+    validationOverride: String
+    defaultValue: String
+    conditionalLogic: String
+}
+
 type Mutation {
     # Company mutations
     createCompany(input: CompanyInput!): Company!
@@ -700,10 +813,7 @@ type Mutation {
     updateDesignation(id: ID!, input: DesignationInput!): Designation!
     deleteDesignation(id: ID!): Boolean!
 
-    # Employee mutations
-    createEmployee(input: EmployeeInput!): Employee!
-    updateEmployee(id: ID!, input: EmployeeInput!): Employee!
-    deleteEmployee(id: ID!): Boolean!
+    # Employee mutations moved to employee.graphqls
 
     # Country mutations
     createCountry(input: CountryInput!): Country!
@@ -744,4 +854,24 @@ type Mutation {
     createGrade(input: GradeInput!): Grade!
     updateGrade(id: ID!, input: GradeInput!): Grade!
     deleteGrade(id: ID!): Boolean!
+
+    # Employee Template mutations
+    createEmployeeTemplate(input: EmployeeTemplateInput!): EmployeeTemplate!
+    updateEmployeeTemplate(id: ID!, input: EmployeeTemplateInput!): EmployeeTemplate!
+    deleteEmployeeTemplate(id: ID!): Boolean!
+
+    # Employee Template Section mutations
+    createEmployeeTemplateSection(input: EmployeeTemplateSectionInput!): EmployeeTemplateSection!
+    updateEmployeeTemplateSection(id: ID!, input: EmployeeTemplateSectionInput!): EmployeeTemplateSection!
+    deleteEmployeeTemplateSection(id: ID!): Boolean!
+
+    # Field Definition Master mutations
+    createFieldDefinitionMaster(input: FieldDefinitionMasterInput!): FieldDefinitionMaster!
+    updateFieldDefinitionMaster(id: ID!, input: FieldDefinitionMasterInput!): FieldDefinitionMaster!
+    deleteFieldDefinitionMaster(id: ID!): Boolean!
+
+    # Employee Template Field mutations
+    createEmployeeTemplateField(input: EmployeeTemplateFieldInput!): EmployeeTemplateField!
+    updateEmployeeTemplateField(id: ID!, input: EmployeeTemplateFieldInput!): EmployeeTemplateField!
+    deleteEmployeeTemplateField(id: ID!): Boolean!
 }

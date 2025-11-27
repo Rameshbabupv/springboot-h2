@@ -1,151 +1,118 @@
 package com.hrms.graphql.resolver;
 
-import com.hrms.entity.Company;
-import com.hrms.entity.Department;
-import com.hrms.entity.Designation;
-import com.hrms.entity.Employee;
-import com.hrms.graphql.input.EmployeeInput;
-import com.hrms.repository.CompanyRepository;
-import com.hrms.repository.DepartmentRepository;
-import com.hrms.repository.DesignationRepository;
-import com.hrms.repository.EmployeeRepository;
+import com.hrms.dto.request.EmployeeRequest;
+import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
-import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * GraphQL Resolver for Employee Operations
+ * PRIMARY API for employee data access (REST is only for auth)
+ */
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class EmployeeResolver {
 
-    private final EmployeeRepository employeeRepository;
-    private final CompanyRepository companyRepository;
-    private final DepartmentRepository departmentRepository;
-    private final DesignationRepository designationRepository;
+    private final EmployeeService employeeService;
+
+    // =====================================================
+    // QUERY OPERATIONS
+    // =====================================================
 
     @QueryMapping
-    public List<Employee> employees() {
-        return employeeRepository.findAll();
+    public EmployeeResponse employeeById(@Argument String tenantId, @Argument String id) {
+        log.debug("GraphQL Query: employeeById - tenantId: {}, id: {}", tenantId, id);
+        return employeeService.getEmployeeById(tenantId, Long.parseLong(id));
     }
 
     @QueryMapping
-    public Employee employee(@Argument Long id) {
-        return employeeRepository.findById(id).orElse(null);
+    public EmployeeResponse employeeByEmpId(@Argument String tenantId, @Argument String empId) {
+        log.debug("GraphQL Query: employeeByEmpId - tenantId: {}, empId: {}", tenantId, empId);
+        return employeeService.getEmployeeByEmpId(tenantId, empId);
     }
 
     @QueryMapping
-    public List<Employee> employeesByTenant(@Argument String tenantId) {
-        return employeeRepository.findByTenantId(tenantId);
+    public List<EmployeeResponse> employeesByTenant(@Argument String tenantId) {
+        log.debug("GraphQL Query: employeesByTenant - tenantId: {}", tenantId);
+        return employeeService.getAllEmployeesByTenant(tenantId);
     }
 
     @QueryMapping
-    public List<Employee> employeesByCompany(@Argument Long companyId) {
-        return employeeRepository.findByCompanyId(companyId);
+    public List<EmployeeResponse> employeesByCompany(@Argument String tenantId, @Argument String companyId) {
+        log.debug("GraphQL Query: employeesByCompany - tenantId: {}, companyId: {}", tenantId, companyId);
+        return employeeService.getEmployeesByCompany(tenantId, Long.parseLong(companyId));
     }
 
     @QueryMapping
-    public List<Employee> employeesByDepartment(@Argument Long departmentId) {
-        return employeeRepository.findByDepartmentId(departmentId);
+    public List<EmployeeResponse> employeesByDepartment(@Argument String tenantId, @Argument String departmentId) {
+        log.debug("GraphQL Query: employeesByDepartment - tenantId: {}, departmentId: {}", tenantId, departmentId);
+        return employeeService.getEmployeesByDepartment(tenantId, Long.parseLong(departmentId));
     }
 
     @QueryMapping
-    public List<Employee> activeEmployees() {
-        return employeeRepository.findByIsActiveTrue();
+    public List<EmployeeResponse> employeesByDesignation(@Argument String tenantId, @Argument String designationId) {
+        log.debug("GraphQL Query: employeesByDesignation - tenantId: {}, designationId: {}", tenantId, designationId);
+        return employeeService.getEmployeesByDesignation(tenantId, Long.parseLong(designationId));
     }
 
     @QueryMapping
-    public List<Employee> employeesByStatus(@Argument String status) {
-        return employeeRepository.findByEmployeeStatus(status);
+    public List<EmployeeResponse> employeesByStatus(@Argument String tenantId, @Argument String status) {
+        log.debug("GraphQL Query: employeesByStatus - tenantId: {}, status: {}", tenantId, status);
+        return employeeService.getEmployeesByStatus(tenantId, status);
+    }
+
+    @QueryMapping
+    public List<EmployeeResponse> employeesByReportingManager(@Argument String tenantId, @Argument String managerId) {
+        log.debug("GraphQL Query: employeesByReportingManager - tenantId: {}, managerId: {}", tenantId, managerId);
+        return employeeService.getEmployeesByReportingManager(tenantId, Long.parseLong(managerId));
+    }
+
+    @QueryMapping
+    public List<EmployeeResponse> searchEmployees(@Argument String tenantId, @Argument String searchTerm) {
+        log.debug("GraphQL Query: searchEmployees - tenantId: {}, searchTerm: {}", tenantId, searchTerm);
+        return employeeService.searchEmployees(tenantId, searchTerm);
+    }
+
+    @QueryMapping
+    public Long employeeCount(@Argument String tenantId) {
+        log.debug("GraphQL Query: employeeCount - tenantId: {}", tenantId);
+        return employeeService.getEmployeeCountByTenant(tenantId);
+    }
+
+    @QueryMapping
+    public Long employeeCountByStatus(@Argument String tenantId, @Argument String status) {
+        log.debug("GraphQL Query: employeeCountByStatus - tenantId: {}, status: {}", tenantId, status);
+        return employeeService.getEmployeeCountByStatus(tenantId, status);
+    }
+
+    // =====================================================
+    // MUTATION OPERATIONS
+    // =====================================================
+
+    @MutationMapping
+    public EmployeeResponse createEmployee(@Argument EmployeeRequest input) {
+        log.debug("GraphQL Mutation: createEmployee - empId: {}, tenantId: {}", input.getEmpId(), input.getTenantId());
+        return employeeService.createEmployee(input);
     }
 
     @MutationMapping
-    public Employee createEmployee(@Argument EmployeeInput input) {
-        Employee employee = mapToEntity(input);
-        return employeeRepository.save(employee);
+    public EmployeeResponse updateEmployee(@Argument String tenantId, @Argument String id, @Argument EmployeeRequest input) {
+        log.debug("GraphQL Mutation: updateEmployee - id: {}, tenantId: {}", id, tenantId);
+        return employeeService.updateEmployee(tenantId, Long.parseLong(id), input);
     }
 
     @MutationMapping
-    public Employee updateEmployee(@Argument Long id, @Argument EmployeeInput input) {
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-
-        updateEntityFromInput(employee, input);
-        return employeeRepository.save(employee);
-    }
-
-    @MutationMapping
-    public Boolean deleteEmployee(@Argument Long id) {
-        if (employeeRepository.existsById(id)) {
-            employeeRepository.deleteById(id);
-            return true;
-        }
-        return false;
-    }
-
-    private Employee mapToEntity(EmployeeInput input) {
-        Employee employee = new Employee();
-        updateEntityFromInput(employee, input);
-        return employee;
-    }
-
-    private void updateEntityFromInput(Employee employee, EmployeeInput input) {
-        employee.setTenantId(input.getTenantId());
-
-        if (input.getCompanyId() != null) {
-            Company company = companyRepository.findById(input.getCompanyId())
-                    .orElseThrow(() -> new RuntimeException("Company not found"));
-            employee.setCompany(company);
-        }
-
-        employee.setEmpId(input.getEmpId());
-        employee.setEmployeeName(input.getEmployeeName());
-        employee.setGender(input.getGender());
-
-        if (input.getDateOfBirth() != null && !input.getDateOfBirth().isEmpty()) {
-            employee.setDateOfBirth(LocalDate.parse(input.getDateOfBirth()));
-        }
-        if (input.getDateOfJoin() != null && !input.getDateOfJoin().isEmpty()) {
-            employee.setDateOfJoin(LocalDate.parse(input.getDateOfJoin()));
-        }
-
-        employee.setMobileNo(input.getMobileNo());
-        employee.setEmailId(input.getEmailId());
-        employee.setBloodGroup(input.getBloodGroup());
-        employee.setMaritalStatus(input.getMaritalStatus());
-
-        if (input.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(input.getDepartmentId())
-                    .orElse(null);
-            employee.setDepartment(department);
-        }
-
-        if (input.getDesignationId() != null) {
-            Designation designation = designationRepository.findById(input.getDesignationId())
-                    .orElse(null);
-            employee.setDesignation(designation);
-        }
-
-        if (input.getReportingManagerId() != null) {
-            Employee manager = employeeRepository.findById(input.getReportingManagerId())
-                    .orElse(null);
-            employee.setReportingManager(manager);
-        }
-
-        employee.setBasicSalary(input.getBasicSalary());
-        employee.setGrossSalary(input.getGrossSalary());
-        employee.setCtc(input.getCtc());
-        employee.setAadharNo(input.getAadharNo());
-        employee.setPanNo(input.getPanNo());
-        employee.setUan(input.getUan());
-        employee.setCoverPf(input.getCoverPf());
-        employee.setPfNumber(input.getPfNumber());
-        employee.setCoverEsi(input.getCoverEsi());
-        employee.setEsiNumber(input.getEsiNumber());
-        employee.setEmployeeStatus(input.getEmployeeStatus());
-        employee.setIsActive(input.getIsActive());
+    public Boolean deleteEmployee(@Argument String tenantId, @Argument String id) {
+        log.debug("GraphQL Mutation: deleteEmployee - id: {}, tenantId: {}", id, tenantId);
+        employeeService.deleteEmployee(tenantId, Long.parseLong(id));
+        return true;
     }
 }

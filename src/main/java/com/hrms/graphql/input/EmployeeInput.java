@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 public class EmployeeInput {
     private String tenantId;
     private Long companyId;
+    private Long locationId;
     private String empId;
     private String employeeName;
     private String gender;
@@ -17,8 +18,13 @@ public class EmployeeInput {
     private String emailId;
     private String bloodGroup;
     private String maritalStatus;
+    private Long divisionId;
     private Long departmentId;
+    private Long sectionId;
     private Long designationId;
+    private Long gradeId;
+    private Long jobFunctionId;
+    private Long employmentTypeId;
     private Long reportingManagerId;
     private BigDecimal basicSalary;
     private BigDecimal grossSalary;

@@ -1,34 +1,90 @@
 package com.hrms.service;
 
 import com.hrms.dto.request.EmployeeRequest;
-import com.hrms.entity.Employee;
+import com.hrms.dto.response.EmployeeResponse;
 
 import java.util.List;
 
 /**
- * Service interface for Employee operations.
+ * Service interface for Employee operations
+ * All operations are tenant-aware for multi-tenancy support
  */
 public interface EmployeeService {
 
-    List<Employee> getAllEmployees();
+    /**
+     * Create a new employee
+     * Validates 13 required fields and creates employee record
+     */
+    EmployeeResponse createEmployee(EmployeeRequest request);
 
-    Employee getEmployeeById(Long id);
+    /**
+     * Update an existing employee
+     * Validates tenant ownership before update
+     */
+    EmployeeResponse updateEmployee(String tenantId, Long id, EmployeeRequest request);
 
-    List<Employee> getEmployeesByTenant(String tenantId);
+    /**
+     * Get employee by ID (tenant-aware)
+     */
+    EmployeeResponse getEmployeeById(String tenantId, Long id);
 
-    List<Employee> getEmployeesByCompany(Long companyId);
+    /**
+     * Get employee by employee ID/code (tenant-aware)
+     */
+    EmployeeResponse getEmployeeByEmpId(String tenantId, String empId);
 
-    List<Employee> getEmployeesByDepartment(Long departmentId);
+    /**
+     * Get all employees for a tenant
+     */
+    List<EmployeeResponse> getAllEmployeesByTenant(String tenantId);
 
-    List<Employee> getActiveEmployees();
+    /**
+     * Get employees by company (tenant-aware)
+     */
+    List<EmployeeResponse> getEmployeesByCompany(String tenantId, Long companyId);
 
-    List<Employee> getEmployeesByStatus(String status);
+    /**
+     * Get employees by department (tenant-aware)
+     */
+    List<EmployeeResponse> getEmployeesByDepartment(String tenantId, Long departmentId);
 
-    Employee createEmployee(EmployeeRequest request);
+    /**
+     * Get employees by designation (tenant-aware)
+     */
+    List<EmployeeResponse> getEmployeesByDesignation(String tenantId, Long designationId);
 
-    Employee updateEmployee(Long id, EmployeeRequest request);
+    /**
+     * Get employees by status (tenant-aware)
+     */
+    List<EmployeeResponse> getEmployeesByStatus(String tenantId, String status);
 
-    void deleteEmployee(Long id);
+    /**
+     * Get employees reporting to a manager (tenant-aware)
+     */
+    List<EmployeeResponse> getEmployeesByReportingManager(String tenantId, Long managerId);
 
-    boolean existsById(Long id);
+    /**
+     * Search employees by name, empId, or email (tenant-aware)
+     */
+    List<EmployeeResponse> searchEmployees(String tenantId, String searchTerm);
+
+    /**
+     * Delete employee (tenant-aware)
+     */
+    void deleteEmployee(String tenantId, Long id);
+
+    /**
+     * Get employee count by tenant
+     */
+    long getEmployeeCountByTenant(String tenantId);
+
+    /**
+     * Get employee count by status (tenant-aware)
+     */
+    long getEmployeeCountByStatus(String tenantId, String status);
+
+    /**
+     * Check if employee exists by empId (tenant-aware)
+     */
+    boolean existsByEmpId(String tenantId, String empId);
 }

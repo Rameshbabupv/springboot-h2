@@ -1,80 +1,182 @@
 package com.hrms.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 /**
- * Request DTO for Employee creation and update operations.
+ * Employee Request DTO - Flat structure for GraphQL input
+ * Contains all 78 fields with 13 required fields marked with validation annotations
  */
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmployeeRequest {
 
+    // =====================================================
+    // TENANT (Required)
+    // =====================================================
     @NotBlank(message = "Tenant ID is required")
     private String tenantId;
 
-    @NotNull(message = "Company ID is required")
+    // =====================================================
+    // ORGANIZATIONAL ASSIGNMENT (Required: 6 fields)
+    // =====================================================
+    @NotNull(message = "Company is required")
     private Long companyId;
 
-    @NotBlank(message = "Employee ID is required")
-    @Size(max = 20, message = "Employee ID must not exceed 20 characters")
-    private String empId;
+    @NotNull(message = "Location is required")
+    private Long locationId;
 
-    @NotBlank(message = "Employee name is required")
-    @Size(min = 2, max = 100, message = "Employee name must be between 2 and 100 characters")
-    private String employeeName;
-
-    private String gender;
-    private String dateOfBirth;
-
-    @NotBlank(message = "Date of joining is required")
-    private String dateOfJoin;
-
-    @Size(max = 15, message = "Mobile number must not exceed 15 characters")
-    private String mobileNo;
-
-    @Email(message = "Invalid email format")
-    private String emailId;
-
-    private String bloodGroup;
-    private String maritalStatus;
-
+    @NotNull(message = "Department is required")
     private Long departmentId;
+
+    @NotNull(message = "Designation is required")
     private Long designationId;
+
+    @NotNull(message = "Job Function is required")
+    private Long jobFunctionId;
+
+    @NotNull(message = "Employment Type is required")
+    private Long employmentTypeId;
+
+    // Optional organizational fields
+    private Long divisionId;
+    private Long sectionId;
+    private Long gradeId;
     private Long reportingManagerId;
 
-    private BigDecimal basicSalary;
-    private BigDecimal grossSalary;
-    private BigDecimal ctc;
+    // =====================================================
+    // EMPLOYMENT DETAILS (Required: 3 fields - Identity)
+    // =====================================================
+    @NotBlank(message = "Employee ID is required")
+    private String empId;
 
-    @Size(max = 12, message = "Aadhar number must not exceed 12 characters")
+    @NotBlank(message = "Employee Name is required")
+    private String employeeName;
+
+    @NotNull(message = "Date of Joining is required")
+    private String dateOfJoin; // String for GraphQL (ISO 8601 format: yyyy-MM-dd)
+
+    // Optional employment fields
+    private String dateOfConfirm;
+    private String dateOfRetirement;
+    private String employeeStatus;
+    private String experience;
+    private String sourceOfHire;
+    private String noticePeriod;
+
+    // =====================================================
+    // PERSONAL INFORMATION (Required: 2 fields - Statutory)
+    // =====================================================
+    @NotNull(message = "Date of Birth is required")
+    private String dateOfBirth; // String for GraphQL (ISO 8601 format: yyyy-MM-dd)
+
+    @NotBlank(message = "Gender is required")
+    @Pattern(regexp = "Male|Female|Other", message = "Gender must be Male, Female, or Other")
+    private String gender;
+
+    // Optional personal fields
+    private String fatherName;
+    private Integer age;
+    private String bloodGroup;
+    private String maritalStatus;
+    private String religion;
+    private String graduation;
+
+    // =====================================================
+    // CONTACT INFORMATION (All Optional)
+    // =====================================================
+    private String address1;
+    private String address2;
+    private Long stateId;
+    private Long cityId;
+    private String pincode;
+
+    @Pattern(regexp = "^[0-9]{10}$|^$", message = "Mobile number must be 10 digits")
+    private String mobileNo;
+
+    private String emailId;
+    private String officialEmailId;
+
+    @Pattern(regexp = "^[0-9]{10}$|^$", message = "Emergency number must be 10 digits")
+    private String emergencyNoOne;
+
+    @Pattern(regexp = "^[0-9]{10}$|^$", message = "Emergency number must be 10 digits")
+    private String emergencyNoTwo;
+
+    // =====================================================
+    // COMPENSATION & PAYROLL (All Optional)
+    // =====================================================
+    private BigDecimal wages;
+    private BigDecimal grossAmount;
+    private BigDecimal ctc;
+    private BigDecimal takeHome;
+    private String effectFromSalary;
+    private Boolean fetchFromTemplate;
+    private Long templateId;
+
+    // Banking details
+    private String bankAccountNo;
+    private String bankName;
+    private String bankBranch;
+
+    @Pattern(regexp = "^[A-Z]{4}0[A-Z0-9]{6}$|^$", message = "IFSC code must be 11 characters (e.g., SBIN0001234)")
+    private String ifscCode;
+
+    @Pattern(regexp = "Bank|Cash|Cheque|^$", message = "Payment mode must be Bank, Cash, or Cheque")
+    private String paymentMode;
+
+    // =====================================================
+    // STATUTORY DOCUMENTS (Required: 2 fields)
+    // =====================================================
+    @NotBlank(message = "Aadhaar Number is required")
+    @Pattern(regexp = "^[0-9]{12}$", message = "Aadhaar must be 12 digits")
     private String aadharNo;
 
-    @Size(max = 10, message = "PAN must not exceed 10 characters")
+    @NotBlank(message = "PAN Number is required")
+    @Pattern(regexp = "^[A-Z]{5}[0-9]{4}[A-Z]$", message = "PAN format invalid (e.g., ABCDE1234F)")
     private String panNo;
 
-    private String uan;
+    // Optional statutory fields
+    private String passportNo;
+    private String dlNo;
 
-    @Builder.Default
-    private Boolean coverPf = false;
-    private String pfNumber;
+    // PF Details
+    private Boolean coverPf;
+    private String uanNo;
+    private String pfCode;
+    private String pfEnrollmentDate;
 
-    @Builder.Default
-    private Boolean coverEsi = false;
-    private String esiNumber;
+    // ESI Details
+    private Boolean coverEsi;
+    private String esiCode;
+    private String insuranceNo;
 
-    private String employeeStatus;
+    // =====================================================
+    // ADDITIONAL DETAILS (All Optional)
+    // =====================================================
+    private String shiftOrBatch;
+    private Long shiftId;
+    private Long employeeBatchId;
+    private Boolean compOff;
+    private Boolean otIncentive;
+    private BigDecimal otAmount;
+    private Boolean attIncentive;
+    private Boolean shiftIncentive;
+    private Long routeId;
+    private BigDecimal km;
+    private String ext;
+    private String seatingLocation;
 
-    @Builder.Default
-    private Boolean isActive = true;
+    // =====================================================
+    // AUDIT FIELDS
+    // =====================================================
+    private Long createdBy;
+    private Long updatedBy;
 }

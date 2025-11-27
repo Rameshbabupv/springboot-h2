@@ -1,0 +1,129 @@
+package com.hrms.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "employee_template", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"tenant_id", "template_code"})
+}, indexes = {
+    @Index(name = "idx_template_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_template_active", columnList = "is_active"),
+    @Index(name = "idx_template_effective", columnList = "effective_from, effective_to")
+})
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class EmployeeTemplate {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(name = "tenant_id", nullable = false, length = 50)
+    private String tenantId;
+
+    @NotBlank
+    @Column(name = "template_name", nullable = false, length = 200)
+    private String templateName;
+
+    @NotBlank
+    @Column(name = "template_code", nullable = false, length = 100)
+    private String templateCode;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_categories", columnDefinition = "jsonb")
+    private List<String> applicableCategories = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_groups", columnDefinition = "jsonb")
+    private List<String> applicableGroups = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_grades", columnDefinition = "jsonb")
+    private List<String> applicableGrades = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_companies", columnDefinition = "jsonb")
+    private List<Long> applicableCompanies = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_locations", columnDefinition = "jsonb")
+    private List<Long> applicableLocations = new ArrayList<>();
+
+    @Column(name = "is_default", nullable = false)
+    private Boolean isDefault = false;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @Column(nullable = false)
+    private Integer priority = 0;
+
+    @Column(length = 20)
+    private String version;
+
+    @Column(name = "effective_from")
+    private LocalDate effectiveFrom;
+
+    @Column(name = "effective_to")
+    private LocalDate effectiveTo;
+
+    @Column(name = "created_by")
+    private Long createdBy;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<EmployeeTemplateSection> sections = new ArrayList<>();
+
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<EmployeeTemplateField> fields = new ArrayList<>();
+
+    // Helper methods
+    public void addSection(EmployeeTemplateSection section) {
+        sections.add(section);
+        section.setTemplate(this);
+    }
+
+    public void removeSection(EmployeeTemplateSection section) {
+        sections.remove(section);
+        section.setTemplate(null);
+    }
+
+    public void addField(EmployeeTemplateField field) {
+        fields.add(field);
+        field.setTemplate(this);
+    }
+
+    public void removeField(EmployeeTemplateField field) {
+        fields.remove(field);
+        field.setTemplate(null);
+    }
+}
