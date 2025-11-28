@@ -17,6 +17,7 @@ import com.hrms.graphql.input.FieldDefinitionMasterInput;
 import com.hrms.service.EmployeeTemplateFieldService;
 import com.hrms.service.EmployeeTemplateService;
 import com.hrms.service.EmployeeTemplateSectionService;
+import com.hrms.service.EmployeeValidationService;
 import com.hrms.service.FieldDefinitionMasterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class EmployeeTemplateResolver {
     private final EmployeeTemplateSectionService sectionService;
     private final FieldDefinitionMasterService fieldDefinitionService;
     private final EmployeeTemplateFieldService templateFieldService;
+    private final EmployeeValidationService validationService;
     private final ObjectMapper objectMapper;
 
     // ==================== Employee Template Queries ====================
@@ -107,6 +109,23 @@ public class EmployeeTemplateResolver {
     @QueryMapping
     public EmployeeTemplateFieldResponse employeeTemplateField(@Argument String id) {
         return templateFieldService.getFieldById(Long.parseLong(id));
+    }
+
+    // ==================== Validation Queries ====================
+
+    @QueryMapping
+    public String employeeTemplateValidationRules(@Argument String tenantId, @Argument String templateId) {
+        log.debug("Getting validation rules for template: {}", templateId);
+        Map<String, Map<String, Object>> validationRules = validationService.getTemplateValidationRules(
+                tenantId,
+                Long.parseLong(templateId)
+        );
+        try {
+            return objectMapper.writeValueAsString(validationRules);
+        } catch (JsonProcessingException e) {
+            log.error("Error serializing validation rules", e);
+            return "{}";
+        }
     }
 
     // ==================== Employee Template Mutations ====================
@@ -197,9 +216,20 @@ public class EmployeeTemplateResolver {
         request.setTemplateName(input.getTemplateName());
         request.setTemplateCode(input.getTemplateCode());
         request.setDescription(input.getDescription());
+        request.setChangeNotes(input.getChangeNotes());
         request.setApplicableCategories(input.getApplicableCategories() != null ? input.getApplicableCategories() : new ArrayList<>());
         request.setApplicableGroups(input.getApplicableGroups() != null ? input.getApplicableGroups() : new ArrayList<>());
         request.setApplicableGrades(input.getApplicableGrades() != null ? input.getApplicableGrades() : new ArrayList<>());
+        request.setApplicableDivisions(input.getApplicableDivisions() != null ? input.getApplicableDivisions() : new ArrayList<>());
+        request.setApplicableDepartments(input.getApplicableDepartments() != null ? input.getApplicableDepartments() : new ArrayList<>());
+        request.setApplicableSections(input.getApplicableSections() != null ? input.getApplicableSections() : new ArrayList<>());
+        request.setApplicableDesignations(input.getApplicableDesignations() != null ? input.getApplicableDesignations() : new ArrayList<>());
+        request.setApplicableJobFunctions(input.getApplicableJobFunctions() != null ? input.getApplicableJobFunctions() : new ArrayList<>());
+        request.setApplicableEmploymentTypes(input.getApplicableEmploymentTypes() != null ? input.getApplicableEmploymentTypes() : new ArrayList<>());
+
+        // Field Configuration
+        request.setStandardFields(input.getStandardFields());
+        request.setCustomFields(input.getCustomFields());
 
         // Convert String IDs to Long objects
         if (input.getApplicableCompanies() != null) {

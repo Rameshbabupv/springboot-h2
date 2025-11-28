@@ -1,3 +1,6 @@
+# Scalar Types
+scalar JSON
+
 # Company Types
 type Company {
     id: ID!
@@ -282,11 +285,35 @@ type EmployeeTemplate {
     templateName: String!
     templateCode: String!
     description: String
+    changeNotes: String
     applicableCategories: [String!]
     applicableGroups: [String!]
     applicableGrades: [String!]
     applicableCompanies: [ID!]
     applicableLocations: [ID!]
+    applicableDivisions: [String!]
+    applicableDepartments: [String!]
+    applicableSections: [String!]
+    applicableDesignations: [String!]
+    applicableJobFunctions: [String!]
+    applicableEmploymentTypes: [String!]
+
+    # Field Configuration
+    standardFields: JSON
+    customFields: JSON
+
+    # Assignment Criteria (The 9 Organizational Parameters)
+    # null = applies to all, specific ID = applies only to that value
+    companyId: String
+    locationId: String
+    divisionId: String
+    departmentId: String
+    sectionId: String
+    designationId: String
+    jobFunctionId: String
+    employmentTypeId: String
+    gradeId: String
+
     isDefault: Boolean!
     isActive: Boolean!
     priority: Int!
@@ -488,6 +515,9 @@ type Query {
     # Employee Template Field queries
     employeeTemplateFields(sectionId: ID!): [EmployeeTemplateField!]!
     employeeTemplateField(id: ID!): EmployeeTemplateField
+
+    # Validation queries
+    employeeTemplateValidationRules(tenantId: String!, templateId: ID!): String!
 }
 
 # Company Inputs
@@ -715,11 +745,34 @@ input EmployeeTemplateInput {
     templateName: String!
     templateCode: String!
     description: String
+    changeNotes: String
     applicableCategories: [String!]
     applicableGroups: [String!]
     applicableGrades: [String!]
     applicableCompanies: [ID!]
     applicableLocations: [ID!]
+    applicableDivisions: [String!]
+    applicableDepartments: [String!]
+    applicableSections: [String!]
+    applicableDesignations: [String!]
+    applicableJobFunctions: [String!]
+    applicableEmploymentTypes: [String!]
+
+    # Field Configuration
+    standardFields: JSON
+    customFields: JSON
+
+    # Assignment Criteria (The 9 Organizational Parameters)
+    companyId: String
+    locationId: String
+    divisionId: String
+    departmentId: String
+    sectionId: String
+    designationId: String
+    jobFunctionId: String
+    employmentTypeId: String
+    gradeId: String
+
     isDefault: Boolean
     isActive: Boolean
     priority: Int

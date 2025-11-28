@@ -175,11 +175,23 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
         template.setTemplateName(request.getTemplateName());
         template.setTemplateCode(request.getTemplateCode());
         template.setDescription(request.getDescription());
+        template.setChangeNotes(request.getChangeNotes());
         template.setApplicableCategories(request.getApplicableCategories() != null ? request.getApplicableCategories() : new ArrayList<>());
         template.setApplicableGroups(request.getApplicableGroups() != null ? request.getApplicableGroups() : new ArrayList<>());
         template.setApplicableGrades(request.getApplicableGrades() != null ? request.getApplicableGrades() : new ArrayList<>());
         template.setApplicableCompanies(request.getApplicableCompanies() != null ? request.getApplicableCompanies() : new ArrayList<>());
         template.setApplicableLocations(request.getApplicableLocations() != null ? request.getApplicableLocations() : new ArrayList<>());
+        template.setApplicableDivisions(request.getApplicableDivisions() != null ? request.getApplicableDivisions() : new ArrayList<>());
+        template.setApplicableDepartments(request.getApplicableDepartments() != null ? request.getApplicableDepartments() : new ArrayList<>());
+        template.setApplicableSections(request.getApplicableSections() != null ? request.getApplicableSections() : new ArrayList<>());
+        template.setApplicableDesignations(request.getApplicableDesignations() != null ? request.getApplicableDesignations() : new ArrayList<>());
+        template.setApplicableJobFunctions(request.getApplicableJobFunctions() != null ? request.getApplicableJobFunctions() : new ArrayList<>());
+        template.setApplicableEmploymentTypes(request.getApplicableEmploymentTypes() != null ? request.getApplicableEmploymentTypes() : new ArrayList<>());
+
+        // Field Configuration
+        template.setStandardFields(request.getStandardFields());
+        template.setCustomFields(request.getCustomFields());
+
         template.setIsDefault(request.getIsDefault() != null ? request.getIsDefault() : false);
         template.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
         template.setPriority(request.getPriority() != null ? request.getPriority() : 0);
@@ -195,11 +207,23 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
         template.setTemplateName(request.getTemplateName());
         template.setTemplateCode(request.getTemplateCode());
         template.setDescription(request.getDescription());
+        template.setChangeNotes(request.getChangeNotes());
         template.setApplicableCategories(request.getApplicableCategories() != null ? request.getApplicableCategories() : new ArrayList<>());
         template.setApplicableGroups(request.getApplicableGroups() != null ? request.getApplicableGroups() : new ArrayList<>());
         template.setApplicableGrades(request.getApplicableGrades() != null ? request.getApplicableGrades() : new ArrayList<>());
         template.setApplicableCompanies(request.getApplicableCompanies() != null ? request.getApplicableCompanies() : new ArrayList<>());
         template.setApplicableLocations(request.getApplicableLocations() != null ? request.getApplicableLocations() : new ArrayList<>());
+        template.setApplicableDivisions(request.getApplicableDivisions() != null ? request.getApplicableDivisions() : new ArrayList<>());
+        template.setApplicableDepartments(request.getApplicableDepartments() != null ? request.getApplicableDepartments() : new ArrayList<>());
+        template.setApplicableSections(request.getApplicableSections() != null ? request.getApplicableSections() : new ArrayList<>());
+        template.setApplicableDesignations(request.getApplicableDesignations() != null ? request.getApplicableDesignations() : new ArrayList<>());
+        template.setApplicableJobFunctions(request.getApplicableJobFunctions() != null ? request.getApplicableJobFunctions() : new ArrayList<>());
+        template.setApplicableEmploymentTypes(request.getApplicableEmploymentTypes() != null ? request.getApplicableEmploymentTypes() : new ArrayList<>());
+
+        // Field Configuration
+        template.setStandardFields(request.getStandardFields());
+        template.setCustomFields(request.getCustomFields());
+
         if (request.getIsDefault() != null) template.setIsDefault(request.getIsDefault());
         if (request.getIsActive() != null) template.setIsActive(request.getIsActive());
         if (request.getPriority() != null) template.setPriority(request.getPriority());
@@ -216,11 +240,20 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
                 .templateName(template.getTemplateName())
                 .templateCode(template.getTemplateCode())
                 .description(template.getDescription())
+                .changeNotes(template.getChangeNotes())
                 .applicableCategories(template.getApplicableCategories())
                 .applicableGroups(template.getApplicableGroups())
                 .applicableGrades(template.getApplicableGrades())
                 .applicableCompanies(template.getApplicableCompanies())
                 .applicableLocations(template.getApplicableLocations())
+                .applicableDivisions(template.getApplicableDivisions())
+                .applicableDepartments(template.getApplicableDepartments())
+                .applicableSections(template.getApplicableSections())
+                .applicableDesignations(template.getApplicableDesignations())
+                .applicableJobFunctions(template.getApplicableJobFunctions())
+                .applicableEmploymentTypes(template.getApplicableEmploymentTypes())
+                .standardFields(template.getStandardFields())
+                .customFields(template.getCustomFields())
                 .isDefault(template.getIsDefault())
                 .isActive(template.getIsActive())
                 .priority(template.getPriority())

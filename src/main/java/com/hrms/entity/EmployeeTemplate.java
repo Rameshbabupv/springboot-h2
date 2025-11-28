@@ -48,6 +48,9 @@ public class EmployeeTemplate {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "change_notes", columnDefinition = "TEXT")
+    private String changeNotes;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "applicable_categories", columnDefinition = "jsonb")
     private List<String> applicableCategories = new ArrayList<>();
@@ -67,6 +70,68 @@ public class EmployeeTemplate {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "applicable_locations", columnDefinition = "jsonb")
     private List<Long> applicableLocations = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_divisions", columnDefinition = "jsonb")
+    private List<String> applicableDivisions = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_departments", columnDefinition = "jsonb")
+    private List<String> applicableDepartments = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_sections", columnDefinition = "jsonb")
+    private List<String> applicableSections = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_designations", columnDefinition = "jsonb")
+    private List<String> applicableDesignations = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_job_functions", columnDefinition = "jsonb")
+    private List<String> applicableJobFunctions = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "applicable_employment_types", columnDefinition = "jsonb")
+    private List<String> applicableEmploymentTypes = new ArrayList<>();
+
+    // Field Configuration
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "standard_fields", columnDefinition = "jsonb")
+    private String standardFields;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "custom_fields", columnDefinition = "jsonb")
+    private String customFields;
+
+    // Assignment Criteria - The 9 Organizational Parameters
+    // null = applies to all (wildcard), specific ID = applies only to that value
+    @Column(name = "company_id")
+    private String companyId;
+
+    @Column(name = "location_id")
+    private String locationId;
+
+    @Column(name = "division_id")
+    private String divisionId;
+
+    @Column(name = "department_id")
+    private String departmentId;
+
+    @Column(name = "section_id")
+    private String sectionId;
+
+    @Column(name = "designation_id")
+    private String designationId;
+
+    @Column(name = "job_function_id")
+    private String jobFunctionId;
+
+    @Column(name = "employment_type_id")
+    private String employmentTypeId;
+
+    @Column(name = "grade_id")
+    private String gradeId;
 
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;

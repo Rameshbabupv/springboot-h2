@@ -29,6 +29,8 @@ public class EmployeeTemplateRequest {
 
     private String description;
 
+    private String changeNotes;
+
     private List<String> applicableCategories = new ArrayList<>();
 
     private List<String> applicableGroups = new ArrayList<>();
@@ -38,6 +40,23 @@ public class EmployeeTemplateRequest {
     private List<Long> applicableCompanies = new ArrayList<>();
 
     private List<Long> applicableLocations = new ArrayList<>();
+
+    private List<String> applicableDivisions = new ArrayList<>();
+
+    private List<String> applicableDepartments = new ArrayList<>();
+
+    private List<String> applicableSections = new ArrayList<>();
+
+    private List<String> applicableDesignations = new ArrayList<>();
+
+    private List<String> applicableJobFunctions = new ArrayList<>();
+
+    private List<String> applicableEmploymentTypes = new ArrayList<>();
+
+    // Field Configuration
+    private String standardFields;
+
+    private String customFields;
 
     private Boolean isDefault = false;
 

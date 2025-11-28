@@ -21,6 +21,7 @@ public class EmployeeTemplateResponse {
     private String templateName;
     private String templateCode;
     private String description;
+    private String changeNotes;
     @Builder.Default
     private List<String> applicableCategories = new ArrayList<>();
     @Builder.Default
@@ -31,6 +32,23 @@ public class EmployeeTemplateResponse {
     private List<Long> applicableCompanies = new ArrayList<>();
     @Builder.Default
     private List<Long> applicableLocations = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableDivisions = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableDepartments = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableSections = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableDesignations = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableJobFunctions = new ArrayList<>();
+    @Builder.Default
+    private List<String> applicableEmploymentTypes = new ArrayList<>();
+
+    // Field Configuration
+    private String standardFields;
+    private String customFields;
+
     private Boolean isDefault;
     private Boolean isActive;
     private Integer priority;
