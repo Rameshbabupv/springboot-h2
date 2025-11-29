@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +36,7 @@ public class FieldDefinitionMasterResponse {
     private String placeholderText;
     private String status;
     private Long createdBy;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private Long updatedBy;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

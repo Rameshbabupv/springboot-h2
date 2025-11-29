@@ -11,6 +11,7 @@ public class GraphQLScalarConfiguration {
     @Bean
     public RuntimeWiringConfigurer runtimeWiringConfigurer() {
         return wiringBuilder -> wiringBuilder
+                .scalar(ExtendedScalars.DateTime)
                 .scalar(ExtendedScalars.Json);
     }
 }

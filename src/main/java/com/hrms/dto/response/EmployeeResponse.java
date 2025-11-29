@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Employee Response DTO - Nested structure for GraphQL output
@@ -135,7 +135,7 @@ public class EmployeeResponse {
     // AUDIT FIELDS
     // =====================================================
     private Long createdBy;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private Long updatedBy;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

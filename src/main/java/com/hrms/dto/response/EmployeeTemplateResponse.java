@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,9 +56,9 @@ public class EmployeeTemplateResponse {
     private LocalDate effectiveFrom;
     private LocalDate effectiveTo;
     private Long createdBy;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private Long updatedBy;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
     @Builder.Default
     private List<EmployeeTemplateSectionResponse> sections = new ArrayList<>();
 }

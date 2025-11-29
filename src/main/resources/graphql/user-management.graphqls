@@ -1,0 +1,181 @@
+# =====================================================
+# User Management Module - GraphQL Schema
+# =====================================================
+
+# Scalar Types
+scalar DateTime
+
+# =====================================================
+# Types
+# =====================================================
+
+type UserAccount {
+    id: ID!
+    tenantId: String!
+    employeeId: ID!
+    employee: Employee
+    username: String!
+    email: String!
+    role: String!
+    isActive: Boolean!
+    isLocked: Boolean!
+    isEmailVerified: Boolean!
+    failedLoginAttempts: Int!
+    lastLoginAt: DateTime
+    lastLoginIp: String
+    passwordChangedAt: DateTime
+    passwordExpiresAt: DateTime
+    mustChangePassword: Boolean!
+    createdBy: ID
+    createdAt: DateTime!
+    updatedBy: ID
+    updatedAt: DateTime!
+}
+
+type UserSession {
+    id: ID!
+    userId: ID!
+    deviceInfo: JSON
+    ipAddress: String
+    userAgent: String
+    isActive: Boolean!
+    expiresAt: DateTime!
+    createdAt: DateTime!
+    lastActivityAt: DateTime!
+}
+
+type UserActivityLog {
+    id: ID!
+    userId: ID!
+    user: UserAccount
+    actionType: String!
+    resourceType: String
+    resourceId: String
+    description: String
+    metadata: JSON
+    ipAddress: String
+    userAgent: String
+    createdAt: DateTime!
+}
+
+type AuthPayload {
+    token: String!
+    refreshToken: String
+    user: UserAccount!
+    expiresIn: Int!
+}
+
+type PasswordResetResponse {
+    success: Boolean!
+    message: String!
+}
+
+# =====================================================
+# Input Types
+# =====================================================
+
+input UserAccountInput {
+    tenantId: String!
+    employeeId: ID!
+    username: String!
+    email: String!
+    password: String
+    role: String!
+    isActive: Boolean
+    mustChangePassword: Boolean
+}
+
+input UserAccountUpdateInput {
+    username: String
+    email: String
+    role: String
+    isActive: Boolean
+    isLocked: Boolean
+    mustChangePassword: Boolean
+}
+
+input LoginInput {
+    tenantId: String!
+    username: String!
+    password: String!
+    deviceInfo: JSON
+}
+
+input PasswordResetRequestInput {
+    email: String!
+    tenantId: String!
+}
+
+input PasswordResetInput {
+    resetToken: String!
+    newPassword: String!
+}
+
+input ChangePasswordInput {
+    userId: ID!
+    currentPassword: String!
+    newPassword: String!
+}
+
+# =====================================================
+# Queries
+# =====================================================
+
+extend type Query {
+    # User Account Queries
+    userAccounts(tenantId: String!): [UserAccount!]!
+    userAccount(id: ID!): UserAccount
+    userAccountByUsername(tenantId: String!, username: String!): UserAccount
+    userAccountByEmployeeId(employeeId: ID!): UserAccount
+    userAccountsByRole(tenantId: String!, role: String!): [UserAccount!]!
+    activeUserAccounts(tenantId: String!): [UserAccount!]!
+
+    # Session Queries
+    userSessions(userId: ID!): [UserSession!]!
+    activeSessions(userId: ID!): [UserSession!]!
+
+    # Activity Log Queries
+    userActivityLogs(
+        userId: ID
+        actionType: String
+        startDate: DateTime
+        endDate: DateTime
+        limit: Int
+        offset: Int
+    ): [UserActivityLog!]!
+
+    # Utility Queries
+    isUsernameAvailable(tenantId: String!, username: String!): Boolean!
+}
+
+# =====================================================
+# Mutations
+# =====================================================
+
+extend type Mutation {
+    # Authentication
+    login(input: LoginInput!): AuthPayload!
+    logout(sessionToken: String!): Boolean!
+    refreshToken(refreshToken: String!): AuthPayload!
+
+    # User Management
+    createUserAccount(input: UserAccountInput!): UserAccount!
+    updateUserAccount(id: ID!, input: UserAccountUpdateInput!): UserAccount!
+    deleteUserAccount(id: ID!): Boolean!
+
+    # Account Status
+    activateUserAccount(id: ID!): UserAccount!
+    deactivateUserAccount(id: ID!): UserAccount!
+    lockUserAccount(id: ID!, reason: String): UserAccount!
+    unlockUserAccount(id: ID!): UserAccount!
+
+    # Password Management
+    changePassword(input: ChangePasswordInput!): Boolean!
+    requestPasswordReset(input: PasswordResetRequestInput!): PasswordResetResponse!
+    resetPassword(input: PasswordResetInput!): PasswordResetResponse!
+    forcePasswordChange(userId: ID!): Boolean!
+
+    # Session Management
+    terminateSession(sessionId: ID!): Boolean!
+    terminateAllSessions(userId: ID!): Boolean!
+}

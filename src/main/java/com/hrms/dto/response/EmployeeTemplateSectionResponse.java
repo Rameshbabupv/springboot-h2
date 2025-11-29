@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +26,8 @@ public class EmployeeTemplateSectionResponse {
     private Boolean isCollapsible;
     private Boolean isExpandedByDefault;
     private Map<String, Object> conditionalLogic;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
     @Builder.Default
     private List<EmployeeTemplateFieldResponse> fields = new ArrayList<>();
 }

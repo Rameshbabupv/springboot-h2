@@ -188,9 +188,9 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
         template.setApplicableJobFunctions(request.getApplicableJobFunctions() != null ? request.getApplicableJobFunctions() : new ArrayList<>());
         template.setApplicableEmploymentTypes(request.getApplicableEmploymentTypes() != null ? request.getApplicableEmploymentTypes() : new ArrayList<>());
 
-        // Field Configuration
-        template.setStandardFields(request.getStandardFields());
-        template.setCustomFields(request.getCustomFields());
+        // Field Configuration - Convert empty strings to null for JSON fields
+        template.setStandardFields(request.getStandardFields() != null && !request.getStandardFields().trim().isEmpty() ? request.getStandardFields() : null);
+        template.setCustomFields(request.getCustomFields() != null && !request.getCustomFields().trim().isEmpty() ? request.getCustomFields() : null);
 
         template.setIsDefault(request.getIsDefault() != null ? request.getIsDefault() : false);
         template.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
@@ -220,9 +220,9 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
         template.setApplicableJobFunctions(request.getApplicableJobFunctions() != null ? request.getApplicableJobFunctions() : new ArrayList<>());
         template.setApplicableEmploymentTypes(request.getApplicableEmploymentTypes() != null ? request.getApplicableEmploymentTypes() : new ArrayList<>());
 
-        // Field Configuration
-        template.setStandardFields(request.getStandardFields());
-        template.setCustomFields(request.getCustomFields());
+        // Field Configuration - Convert empty strings to null for JSON fields
+        template.setStandardFields(request.getStandardFields() != null && !request.getStandardFields().trim().isEmpty() ? request.getStandardFields() : null);
+        template.setCustomFields(request.getCustomFields() != null && !request.getCustomFields().trim().isEmpty() ? request.getCustomFields() : null);
 
         if (request.getIsDefault() != null) template.setIsDefault(request.getIsDefault());
         if (request.getIsActive() != null) template.setIsActive(request.getIsActive());
