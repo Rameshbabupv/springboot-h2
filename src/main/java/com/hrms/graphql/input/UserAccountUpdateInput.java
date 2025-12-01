@@ -17,4 +17,5 @@ public class UserAccountUpdateInput {
     private Boolean isActive;
     private Boolean isLocked;
     private Boolean mustChangePassword;
+    private Boolean inheritFromDesignation;
 }

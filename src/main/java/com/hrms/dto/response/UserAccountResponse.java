@@ -33,6 +33,7 @@ public class UserAccountResponse {
     private OffsetDateTime passwordChangedAt;
     private OffsetDateTime passwordExpiresAt;
     private Boolean mustChangePassword;
+    private Boolean inheritFromDesignation;
     private Long createdBy;
     private OffsetDateTime createdAt;
     private Long updatedBy;

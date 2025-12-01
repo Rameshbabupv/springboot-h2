@@ -136,9 +136,22 @@ public class UserAccountServiceImpl implements UserAccountService {
             }
         }
 
-        // Validate role if changing
-        if (request.getRole() != null && !UserRole.isValid(request.getRole())) {
-            throw new BadRequestException("Invalid role: " + request.getRole());
+        // Validate and normalize role if changing
+        if (request.getRole() != null) {
+            String normalizedRole = UserRole.normalizeRole(request.getRole());
+            if (!UserRole.isValid(normalizedRole)) {
+                throw new BadRequestException("Invalid role: " + request.getRole());
+            }
+            // Update request with normalized role
+            request = new UserAccountUpdateRequest(
+                request.getUsername(),
+                request.getEmail(),
+                normalizedRole,
+                request.getIsActive(),
+                request.getIsLocked(),
+                request.getMustChangePassword(),
+                request.getInheritFromDesignation()
+            );
         }
 
         // Update entity

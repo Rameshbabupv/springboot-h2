@@ -104,6 +104,10 @@ public class UserAccount {
     @Column(name = "must_change_password", nullable = false)
     private Boolean mustChangePassword = false;
 
+    @NotNull
+    @Column(name = "inherit_from_designation", nullable = false)
+    private Boolean inheritFromDesignation = true;
+
     @Column(name = "created_by")
     private Long createdBy;
 

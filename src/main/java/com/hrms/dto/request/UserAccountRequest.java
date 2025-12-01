@@ -47,4 +47,6 @@ public class UserAccountRequest {
     private Boolean isActive = true;
 
     private Boolean mustChangePassword = false;
+
+    private Boolean inheritFromDesignation = true;
 }

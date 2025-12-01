@@ -135,8 +135,9 @@ public class UserPrivilegeServiceImpl implements UserPrivilegeService {
                                                                           String currentUser) {
         log.debug("Saving {} organizational scopes for tenant: {} and user: {}", scopes.size(), tenantId, userId);
 
-        // Delete existing scopes for this user
+        // Delete existing scopes for this user and flush to avoid constraint violations
         organizationalScopeRepository.deleteByTenantIdAndUserId(tenantId, userId);
+        organizationalScopeRepository.flush();
 
         // Create new scopes
         List<UserOrganizationalScope> savedScopes = scopes.stream()
@@ -145,9 +146,12 @@ public class UserPrivilegeServiceImpl implements UserPrivilegeService {
                     scope.setTenantId(tenantId);
                     scope.setUserId(userId);
                     scope.setCreatedBy(currentUser);
-                    return organizationalScopeRepository.save(scope);
+                    return scope;
                 })
                 .collect(Collectors.toList());
+
+        // Save all at once
+        savedScopes = organizationalScopeRepository.saveAll(savedScopes);
 
         log.debug("Successfully saved {} organizational scopes", savedScopes.size());
         return savedScopes.stream()

@@ -161,7 +161,8 @@ public class UserAccountResolver {
             input.getPassword(),
             input.getRole(),
             input.getIsActive(),
-            input.getMustChangePassword()
+            input.getMustChangePassword(),
+            input.getInheritFromDesignation()
         );
 
         return userAccountService.createUser(request);
@@ -177,7 +178,8 @@ public class UserAccountResolver {
             input.getRole(),
             input.getIsActive(),
             input.getIsLocked(),
-            input.getMustChangePassword()
+            input.getMustChangePassword(),
+            input.getInheritFromDesignation()
         );
 
         return userAccountService.updateUser(Long.parseLong(id), request);

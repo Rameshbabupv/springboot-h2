@@ -30,4 +30,6 @@ public class UserAccountUpdateRequest {
     private Boolean isLocked;
 
     private Boolean mustChangePassword;
+
+    private Boolean inheritFromDesignation;
 }

@@ -19,4 +19,5 @@ public class UserAccountInput {
     private String role;
     private Boolean isActive;
     private Boolean mustChangePassword;
+    private Boolean inheritFromDesignation;
 }

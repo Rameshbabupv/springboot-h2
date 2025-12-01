@@ -26,6 +26,7 @@ type UserAccount {
     passwordChangedAt: DateTime
     passwordExpiresAt: DateTime
     mustChangePassword: Boolean!
+    inheritFromDesignation: Boolean!
     createdBy: ID
     createdAt: DateTime!
     updatedBy: ID
@@ -83,6 +84,7 @@ input UserAccountInput {
     role: String!
     isActive: Boolean
     mustChangePassword: Boolean
+    inheritFromDesignation: Boolean
 }
 
 input UserAccountUpdateInput {
@@ -92,6 +94,7 @@ input UserAccountUpdateInput {
     isActive: Boolean
     isLocked: Boolean
     mustChangePassword: Boolean
+    inheritFromDesignation: Boolean
 }
 
 input LoginInput {
