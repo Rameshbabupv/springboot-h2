@@ -4,7 +4,9 @@ import com.hrms.dto.request.*;
 import com.hrms.entity.*;
 import com.hrms.graphql.input.*;
 import com.hrms.service.CompanyService;
+import com.hrms.util.LoggingUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class CompanyResolver {
@@ -23,65 +26,73 @@ public class CompanyResolver {
 
     @QueryMapping
     public List<Company> companies() {
-        return companyService.getAllCompanies();
+        log.debug("GraphQL Query: companies");
+        List<Company> result = companyService.getAllCompanies();
+        log.info("GraphQL Response: companies\n{}", LoggingUtil.formatListForLog(result));
+        return result;
     }
 
     @QueryMapping
     public Company company(@Argument Long id) {
-        return companyService.getCompanyById(id);
+        log.debug("GraphQL Query: company - id: {}", id);
+        Company result = companyService.getCompanyById(id);
+        log.info("GraphQL Response: company - returned company: {} ({})", result.getName(), result.getCode());
+        return result;
     }
 
     @QueryMapping
     public Company companyByCode(@Argument String code) {
-        return companyService.getCompanyByCode(code);
+        log.debug("GraphQL Query: companyByCode - code: {}", code);
+        Company result = companyService.getCompanyByCode(code);
+        log.info("GraphQL Response: companyByCode - returned company: {}", result.getName());
+        return result;
     }
 
     @QueryMapping
     public List<Company> companiesByTenant(@Argument String tenantId) {
-        return companyService.getCompaniesByTenant(tenantId);
+        log.debug("GraphQL Query: companiesByTenant - tenantId: {}", tenantId);
+        List<Company> result = companyService.getCompaniesByTenant(tenantId);
+        log.info("GraphQL Response: companiesByTenant - returned {} companies for tenant: {}", result.size(), tenantId);
+        return result;
     }
 
     @QueryMapping
     public List<Company> activeCompanies() {
-        return companyService.getActiveCompanies();
+        log.debug("GraphQL Query: activeCompanies");
+        List<Company> result = companyService.getActiveCompanies();
+        log.info("GraphQL Response: activeCompanies - returned {} active companies", result.size());
+        return result;
     }
 
     // ==================== Company Mutations ====================
 
     @MutationMapping
     public Company createCompany(@Argument CompanyInput input) {
-        System.out.println("=== DEBUG: createCompany called ===");
-        System.out.println("DEBUG: input object class: " + input.getClass().getName());
-        System.out.println("DEBUG: input object toString: " + input);
-        System.out.println("Input tenantId: " + input.getTenantId());
-        System.out.println("Input code: " + input.getCode());
-        System.out.println("Input name: " + input.getName());
-        System.out.println("Input shortName: " + input.getShortName());
-        System.out.println("Input industry: " + input.getIndustry());
-        System.out.println("Input logoUrl: " + (input.getLogoUrl() != null ? input.getLogoUrl().substring(0, Math.min(50, input.getLogoUrl().length())) : "null"));
+        log.debug("GraphQL Mutation: createCompany - name: {}, code: {}, tenantId: {}",
+                  input.getName(), input.getCode(), input.getTenantId());
 
         CompanyRequest request = mapToCompanyRequest(input);
-
-        System.out.println("Request shortName: " + request.getShortName());
-        System.out.println("Request logo: " + (request.getLogo() != null ? request.getLogo().substring(0, Math.min(50, request.getLogo().length())) : "null"));
-
         Company result = companyService.createCompany(request);
 
-        System.out.println("Result shortName: " + result.getShortName());
-        System.out.println("Result logo: " + (result.getLogo() != null ? result.getLogo().substring(0, Math.min(50, result.getLogo().length())) : "null"));
-
+        log.info("GraphQL Response: createCompany - created company id: {}, name: {}, code: {}",
+                 result.getId(), result.getName(), result.getCode());
         return result;
     }
 
     @MutationMapping
     public Company updateCompany(@Argument Long id, @Argument CompanyInput input) {
+        log.debug("GraphQL Mutation: updateCompany - id: {}, name: {}", id, input.getName());
         CompanyRequest request = mapToCompanyRequest(input);
-        return companyService.updateCompany(id, request);
+        Company result = companyService.updateCompany(id, request);
+        log.info("GraphQL Response: updateCompany - updated company id: {}, name: {}", result.getId(), result.getName());
+        return result;
     }
 
     @MutationMapping
     public Boolean deleteCompany(@Argument Long id) {
+        log.debug("GraphQL Mutation: deleteCompany - id: {}", id);
         companyService.deleteCompany(id);
+        log.info("GraphQL Response: deleteCompany - successfully deleted company id: {}", id);
         return true;
     }
 
@@ -89,55 +100,81 @@ public class CompanyResolver {
 
     @QueryMapping
     public CompanyStatutory companyStatutory(@Argument Long companyId) {
-        return companyService.getStatutoryByCompanyId(companyId);
+        log.debug("GraphQL Query: companyStatutory - companyId: {}", companyId);
+        CompanyStatutory result = companyService.getStatutoryByCompanyId(companyId);
+        log.info("GraphQL Response: companyStatutory - returned statutory info for company: {}", companyId);
+        return result;
     }
 
     @MutationMapping
     public CompanyStatutory updateCompanyStatutory(@Argument Long companyId, @Argument CompanyStatutoryInput input) {
+        log.debug("GraphQL Mutation: updateCompanyStatutory - companyId: {}", companyId);
         CompanyStatutoryRequest request = mapToStatutoryRequest(input);
-        return companyService.updateStatutory(companyId, request);
+        CompanyStatutory result = companyService.updateStatutory(companyId, request);
+        log.info("GraphQL Response: updateCompanyStatutory - updated statutory for company: {}", companyId);
+        return result;
     }
 
     // ==================== General Settings Queries/Mutations ====================
 
     @QueryMapping
     public CompanyGeneralSettings companyGeneralSettings(@Argument Long companyId) {
-        return companyService.getGeneralSettingsByCompanyId(companyId);
+        log.debug("GraphQL Query: companyGeneralSettings - companyId: {}", companyId);
+        CompanyGeneralSettings result = companyService.getGeneralSettingsByCompanyId(companyId);
+        log.info("GraphQL Response: companyGeneralSettings - returned settings for company: {}", companyId);
+        return result;
     }
 
     @MutationMapping
     public CompanyGeneralSettings updateCompanyGeneralSettings(@Argument Long companyId, @Argument CompanyGeneralSettingsInput input) {
+        log.debug("GraphQL Mutation: updateCompanyGeneralSettings - companyId: {}", companyId);
         CompanyGeneralSettingsRequest request = mapToGeneralSettingsRequest(input);
-        return companyService.updateGeneralSettings(companyId, request);
+        CompanyGeneralSettings result = companyService.updateGeneralSettings(companyId, request);
+        log.info("GraphQL Response: updateCompanyGeneralSettings - updated settings for company: {}", companyId);
+        return result;
     }
 
     // ==================== Location Queries/Mutations ====================
 
     @QueryMapping
     public List<CompanyLocation> companyLocations(@Argument Long companyId) {
-        return companyService.getLocationsByCompanyId(companyId);
+        log.debug("GraphQL Query: companyLocations - companyId: {}", companyId);
+        List<CompanyLocation> result = companyService.getLocationsByCompanyId(companyId);
+        log.info("GraphQL Response: companyLocations - returned {} locations for company: {}", result.size(), companyId);
+        return result;
     }
 
     @QueryMapping
     public CompanyLocation companyLocation(@Argument Long id) {
-        return companyService.getLocationById(id);
+        log.debug("GraphQL Query: companyLocation - id: {}", id);
+        CompanyLocation result = companyService.getLocationById(id);
+        log.info("GraphQL Response: companyLocation - returned location: {}", result.getName());
+        return result;
     }
 
     @MutationMapping
     public CompanyLocation createCompanyLocation(@Argument Long companyId, @Argument CompanyLocationInput input) {
+        log.debug("GraphQL Mutation: createCompanyLocation - companyId: {}, name: {}", companyId, input.getName());
         CompanyLocationRequest request = mapToLocationRequest(input);
-        return companyService.createLocation(companyId, request);
+        CompanyLocation result = companyService.createLocation(companyId, request);
+        log.info("GraphQL Response: createCompanyLocation - created location id: {}, name: {}", result.getId(), result.getName());
+        return result;
     }
 
     @MutationMapping
     public CompanyLocation updateCompanyLocation(@Argument Long id, @Argument CompanyLocationInput input) {
+        log.debug("GraphQL Mutation: updateCompanyLocation - id: {}", id);
         CompanyLocationRequest request = mapToLocationRequest(input);
-        return companyService.updateLocation(id, request);
+        CompanyLocation result = companyService.updateLocation(id, request);
+        log.info("GraphQL Response: updateCompanyLocation - updated location id: {}", result.getId());
+        return result;
     }
 
     @MutationMapping
     public Boolean deleteCompanyLocation(@Argument Long id) {
+        log.debug("GraphQL Mutation: deleteCompanyLocation - id: {}", id);
         companyService.deleteLocation(id);
+        log.info("GraphQL Response: deleteCompanyLocation - successfully deleted location id: {}", id);
         return true;
     }
 
@@ -145,35 +182,52 @@ public class CompanyResolver {
 
     @QueryMapping
     public List<CompanyBankAccount> companyBankAccounts(@Argument Long companyId) {
-        return companyService.getBankAccountsByCompanyId(companyId);
+        log.debug("GraphQL Query: companyBankAccounts - companyId: {}", companyId);
+        List<CompanyBankAccount> result = companyService.getBankAccountsByCompanyId(companyId);
+        log.info("GraphQL Response: companyBankAccounts - returned {} bank accounts for company: {}", result.size(), companyId);
+        return result;
     }
 
     @QueryMapping
     public CompanyBankAccount companyBankAccount(@Argument Long id) {
-        return companyService.getBankAccountById(id);
+        log.debug("GraphQL Query: companyBankAccount - id: {}", id);
+        CompanyBankAccount result = companyService.getBankAccountById(id);
+        log.info("GraphQL Response: companyBankAccount - returned bank account: {}", result.getAccountName());
+        return result;
     }
 
     @MutationMapping
     public CompanyBankAccount createCompanyBankAccount(@Argument Long companyId, @Argument CompanyBankAccountInput input) {
+        log.debug("GraphQL Mutation: createCompanyBankAccount - companyId: {}, accountName: {}", companyId, input.getAccountName());
         CompanyBankAccountRequest request = mapToBankAccountRequest(input);
-        return companyService.createBankAccount(companyId, request);
+        CompanyBankAccount result = companyService.createBankAccount(companyId, request);
+        log.info("GraphQL Response: createCompanyBankAccount - created bank account id: {}", result.getId());
+        return result;
     }
 
     @MutationMapping
     public CompanyBankAccount updateCompanyBankAccount(@Argument Long id, @Argument CompanyBankAccountInput input) {
+        log.debug("GraphQL Mutation: updateCompanyBankAccount - id: {}", id);
         CompanyBankAccountRequest request = mapToBankAccountRequest(input);
-        return companyService.updateBankAccount(id, request);
+        CompanyBankAccount result = companyService.updateBankAccount(id, request);
+        log.info("GraphQL Response: updateCompanyBankAccount - updated bank account id: {}", result.getId());
+        return result;
     }
 
     @MutationMapping
     public Boolean deleteCompanyBankAccount(@Argument Long id) {
+        log.debug("GraphQL Mutation: deleteCompanyBankAccount - id: {}", id);
         companyService.deleteBankAccount(id);
+        log.info("GraphQL Response: deleteCompanyBankAccount - successfully deleted bank account id: {}", id);
         return true;
     }
 
     @MutationMapping
     public CompanyBankAccount setCompanyPrimaryBankAccount(@Argument Long id) {
-        return companyService.setPrimaryBankAccount(id);
+        log.debug("GraphQL Mutation: setCompanyPrimaryBankAccount - id: {}", id);
+        CompanyBankAccount result = companyService.setPrimaryBankAccount(id);
+        log.info("GraphQL Response: setCompanyPrimaryBankAccount - set primary bank account id: {}", id);
+        return result;
     }
 
     // ==================== Schema Mappings for nested fields ====================
