@@ -29,10 +29,15 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        log.info("DataInitializer ready - No sample data loaded. Database is empty and ready for your data.");
+        log.info("DataInitializer starting - Loading sample data...");
 
-        // All sample data creation commented out - ready for user's custom data
-        /*
+        // Check if data already exists
+        if (companyRepository.count() > 0) {
+            log.info("Data already exists, skipping initialization");
+            return;
+        }
+
+        // Sample data creation enabled
         log.info("Creating States...");
         State tn = createState("Tamil Nadu", "TN", "Southernmost state");
         State ka = createState("Karnataka", "KA", "Silicon Valley of India");
@@ -57,8 +62,9 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Creating Companies...");
         Company company1 = new Company();
         company1.setTenantId("TENANT001");
+        company1.setCode("CTS001");
         company1.setIndustry("IT Services");
-        company1.setCompanyName("Chennai Tech Solutions Pvt Ltd");
+        company1.setName("Chennai Tech Solutions Pvt Ltd");
         company1.setShortName("CTS");
         company1.setCountry("India");
         company1.setState("Tamil Nadu");
@@ -67,17 +73,16 @@ public class DataInitializer implements CommandLineRunner {
         company1.setPrimaryPhone("9876543210");
         company1.setEmail("info@chennaitech.com");
         company1.setWebsite("www.chennaitech.com");
-        company1.setGstNumber("33ABCDE1234F1Z5");
-        company1.setPan("ABCDE1234F");
         company1.setCompanyType("Private Limited");
         company1.setIsActive(true);
         company1 = companyRepository.save(company1);
-        log.info("Created company: {}", company1.getCompanyName());
+        log.info("Created company: {}", company1.getName());
 
         Company company2 = new Company();
         company2.setTenantId("TENANT001");
+        company2.setCode("BMC001");
         company2.setIndustry("Manufacturing");
-        company2.setCompanyName("Bangalore Manufacturing Corp");
+        company2.setName("Bangalore Manufacturing Corp");
         company2.setShortName("BMC");
         company2.setCountry("India");
         company2.setState("Karnataka");
@@ -85,12 +90,10 @@ public class DataInitializer implements CommandLineRunner {
         company2.setPincode("560001");
         company2.setPrimaryPhone("9876543211");
         company2.setEmail("info@bangaloremfg.com");
-        company2.setGstNumber("29ABCDE1235F1Z5");
-        company2.setPan("ABCDE1235F");
         company2.setCompanyType("Private Limited");
         company2.setIsActive(true);
         company2 = companyRepository.save(company2);
-        log.info("Created company: {}", company2.getCompanyName());
+        log.info("Created company: {}", company2.getName());
 
         // Create Divisions
         log.info("Creating Divisions...");
@@ -364,7 +367,6 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Total Grades: {}", gradeRepository.count());
         log.info("Total Designations: {}", designationRepository.count());
         log.info("Total Employees: {}", employeeRepository.count());
-        */
     }
 
     private State createState(String name, String code, String description) {

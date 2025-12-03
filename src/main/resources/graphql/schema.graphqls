@@ -1,9 +1,14 @@
+# Company Types
 type Company {
     id: ID!
     tenantId: String!
-    industry: String
-    companyName: String!
+    code: String!
+    name: String!
     shortName: String
+    industry: String
+    industryDescription: String
+    companyType: String
+    incorporationDate: String
     logoUrl: String
     addressLine1: String
     addressLine2: String
@@ -12,14 +17,115 @@ type Company {
     city: String
     pincode: String
     primaryPhone: String
+    alternatePhone: String
     email: String
     website: String
-    gstNumber: String
+    contactName: String
+    contactDesignation: String
+    contactEmail: String
+    contactPhone: String
+    adminNotes: String
+    isActive: Boolean!
+    createdBy: String
+    updatedBy: String
+    createdAt: String
+    updatedAt: String
+    # Relations
+    statutory: CompanyStatutory
+    generalSettings: CompanyGeneralSettings
+    locations: [CompanyLocation!]
+    bankAccounts: [CompanyBankAccount!]
+}
+
+type CompanyStatutory {
+    id: ID!
+    # Tax Identifiers
     pan: String
     tan: String
     cin: String
-    incorporationDate: String
-    companyType: String
+    lin: String
+    gstin: String
+    # PF Configuration
+    pfEnabled: Boolean!
+    pfAccountNumber: String
+    pfCeiling: Float
+    pfEmployeeRate: Float
+    pfEmployerRate: Float
+    pfEmployerEpfRate: Float
+    pfEmployerEpsRate: Float
+    # ESI Configuration
+    esiEnabled: Boolean!
+    esiNumber: String
+    esiCeiling: Float
+    esiEmployeeRate: Float
+    esiEmployerRate: Float
+    # PT Configuration
+    ptEnabled: Boolean!
+    ptState: String
+    ptRegistrationNumber: String
+    ptRegistrationDate: String
+    ptValidUpto: String
+    # HR Config
+    retirementAge: Int
+    tdsType: String
+    allowTdsOverride: Boolean
+    applicableActs: String
+    createdAt: String
+    updatedAt: String
+}
+
+type CompanyGeneralSettings {
+    id: ID!
+    # Organizational Structure
+    enableDivisions: Boolean!
+    enableDepartment: Boolean!
+    enableSection: Boolean!
+    enableGrade: Boolean!
+    # System Configuration
+    currency: String
+    dateFormat: String
+    timeZone: String
+    financialYearStart: String
+    language: String
+    createdAt: String
+    updatedAt: String
+}
+
+type CompanyLocation {
+    id: ID!
+    type: String!
+    name: String!
+    code: String
+    addressLine1: String!
+    addressLine2: String
+    state: String!
+    city: String!
+    pincode: String!
+    # Location Statutory
+    esiNumber: String
+    pfNumber: String
+    ptNumber: String
+    gstin: String
+    licenseNumber: String
+    # Contact
+    contactName: String!
+    contactPhone: String!
+    contactEmail: String
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+}
+
+type CompanyBankAccount {
+    id: ID!
+    beneficiaryName: String!
+    accountName: String!
+    bankName: String!
+    branchName: String
+    accountNumber: String!
+    ifscCode: String!
+    accountType: String!
+    isPrimary: Boolean!
     isActive: Boolean!
     createdAt: String
     updatedAt: String
@@ -155,8 +261,23 @@ type Query {
     # Company queries
     companies: [Company!]!
     company(id: ID!): Company
+    companyByCode(code: String!): Company
     companiesByTenant(tenantId: String!): [Company!]!
     activeCompanies: [Company!]!
+
+    # Company Statutory queries
+    companyStatutory(companyId: ID!): CompanyStatutory
+
+    # Company General Settings queries
+    companyGeneralSettings(companyId: ID!): CompanyGeneralSettings
+
+    # Company Location queries
+    companyLocations(companyId: ID!): [CompanyLocation!]!
+    companyLocation(id: ID!): CompanyLocation
+
+    # Company Bank Account queries
+    companyBankAccounts(companyId: ID!): [CompanyBankAccount!]!
+    companyBankAccount(id: ID!): CompanyBankAccount
 
     # Department queries
     departments: [Department!]!
@@ -224,11 +345,16 @@ type Query {
     activeGrades: [Grade!]!
 }
 
+# Company Inputs
 input CompanyInput {
     tenantId: String!
-    industry: String
-    companyName: String!
+    code: String!
+    name: String!
     shortName: String
+    industry: String
+    industryDescription: String
+    companyType: String
+    incorporationDate: String
     logoUrl: String
     addressLine1: String
     addressLine2: String
@@ -237,14 +363,92 @@ input CompanyInput {
     city: String
     pincode: String
     primaryPhone: String
+    alternatePhone: String
     email: String
     website: String
-    gstNumber: String
+    contactName: String
+    contactDesignation: String
+    contactEmail: String
+    contactPhone: String
+    adminNotes: String
+    isActive: Boolean
+}
+
+input CompanyStatutoryInput {
+    # Tax Identifiers
     pan: String
     tan: String
     cin: String
-    incorporationDate: String
-    companyType: String
+    lin: String
+    gstin: String
+    # PF Configuration
+    pfEnabled: Boolean
+    pfAccountNumber: String
+    pfCeiling: Float
+    pfEmployeeRate: Float
+    pfEmployerRate: Float
+    pfEmployerEpfRate: Float
+    pfEmployerEpsRate: Float
+    # ESI Configuration
+    esiEnabled: Boolean
+    esiNumber: String
+    esiCeiling: Float
+    esiEmployeeRate: Float
+    esiEmployerRate: Float
+    # PT Configuration
+    ptEnabled: Boolean
+    ptState: String
+    ptRegistrationNumber: String
+    ptRegistrationDate: String
+    ptValidUpto: String
+    # HR Config
+    retirementAge: Int
+    tdsType: String
+    allowTdsOverride: Boolean
+    applicableActs: String
+}
+
+input CompanyGeneralSettingsInput {
+    enableDivisions: Boolean
+    enableDepartment: Boolean
+    enableSection: Boolean
+    enableGrade: Boolean
+    currency: String
+    dateFormat: String
+    timeZone: String
+    financialYearStart: String
+    language: String
+}
+
+input CompanyLocationInput {
+    type: String!
+    name: String!
+    code: String
+    addressLine1: String!
+    addressLine2: String
+    state: String!
+    city: String!
+    pincode: String!
+    esiNumber: String
+    pfNumber: String
+    ptNumber: String
+    gstin: String
+    licenseNumber: String
+    contactName: String!
+    contactPhone: String!
+    contactEmail: String
+    isActive: Boolean
+}
+
+input CompanyBankAccountInput {
+    beneficiaryName: String!
+    accountName: String!
+    bankName: String!
+    branchName: String
+    accountNumber: String!
+    ifscCode: String!
+    accountType: String!
+    isPrimary: Boolean
     isActive: Boolean
 }
 
@@ -358,6 +562,23 @@ type Mutation {
     createCompany(input: CompanyInput!): Company!
     updateCompany(id: ID!, input: CompanyInput!): Company!
     deleteCompany(id: ID!): Boolean!
+
+    # Company Statutory mutations
+    updateCompanyStatutory(companyId: ID!, input: CompanyStatutoryInput!): CompanyStatutory!
+
+    # Company General Settings mutations
+    updateCompanyGeneralSettings(companyId: ID!, input: CompanyGeneralSettingsInput!): CompanyGeneralSettings!
+
+    # Company Location mutations
+    createCompanyLocation(companyId: ID!, input: CompanyLocationInput!): CompanyLocation!
+    updateCompanyLocation(id: ID!, input: CompanyLocationInput!): CompanyLocation!
+    deleteCompanyLocation(id: ID!): Boolean!
+
+    # Company Bank Account mutations
+    createCompanyBankAccount(companyId: ID!, input: CompanyBankAccountInput!): CompanyBankAccount!
+    updateCompanyBankAccount(id: ID!, input: CompanyBankAccountInput!): CompanyBankAccount!
+    deleteCompanyBankAccount(id: ID!): Boolean!
+    setCompanyPrimaryBankAccount(id: ID!): CompanyBankAccount!
 
     # Department mutations
     createDepartment(input: DepartmentInput!): Department!
