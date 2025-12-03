@@ -1,0 +1,156 @@
+#!/bin/bash
+
+# HRMS Git Hook: Pre-Push Validation
+# Purpose: Enforce strict feature branch naming and pre-work checklist
+# Status: REQUIRED - No exceptions
+# Author: HRMS Development Team
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get current branch name
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Get remote and ref info from arguments
+read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA
+
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}  HRMS GIT HOOK: Pre-Push Validation${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# ============================================================================
+# RULE 1: Branch name validation
+# ============================================================================
+echo -e "\n${YELLOW}[1/3]${NC} Validating branch name format..."
+echo "      Current branch: ${CURRENT_BRANCH}"
+
+# Allow main and develop without restrictions
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "develop" ]]; then
+    echo -e "${GREEN}      ✓ Pushing to protected branch (direct push checks apply)${NC}"
+else
+    # Feature branches MUST match: feature/camelCaseName
+    FEATURE_PATTERN="^feature/[a-z]+([a-zA-Z0-9]*)?$"
+
+    if [[ ! $CURRENT_BRANCH =~ $FEATURE_PATTERN ]]; then
+        echo -e "${RED}      ✗ INVALID branch name!${NC}"
+        echo ""
+        echo -e "${RED}Branch Naming Rules:${NC}"
+        echo "  Required format: feature/{camelCaseName}"
+        echo ""
+        echo -e "${GREEN}Valid examples:${NC}"
+        echo "    • feature/addAttendanceModule"
+        echo "    • feature/fixEmployeeFilterBug"
+        echo "    • feature/implementGraphQLLogging"
+        echo "    • feature/refactorUserService"
+        echo ""
+        echo -e "${RED}Invalid examples:${NC}"
+        echo "    • feature/add-attendance (use camelCase, not kebab-case)"
+        echo "    • feature/ADD_ATTENDANCE (use lowercase)"
+        echo "    • feature/work (too vague)"
+        echo "    • my-feature (missing 'feature/' prefix)"
+        echo ""
+        echo -e "${RED}Rename your branch:${NC}"
+        echo "    git branch -m feature/yourDescriptiveName"
+        echo "    git push -u origin feature/yourDescriptiveName"
+        exit 1
+    fi
+
+    echo -e "${GREEN}      ✓ Branch name format valid${NC}"
+fi
+
+# ============================================================================
+# RULE 2: Check for feature checklist file
+# ============================================================================
+echo -e "\n${YELLOW}[2/3]${NC} Checking for feature checklist..."
+
+CHECKLIST_FILE=".featureBranch.json"
+
+if [[ "$CURRENT_BRANCH" == "feature/"* ]]; then
+    if [[ ! -f "$CHECKLIST_FILE" ]]; then
+        echo -e "${RED}      ✗ MISSING feature checklist!${NC}"
+        echo ""
+        echo -e "${RED}Required: .featureBranch.json must exist in project root${NC}"
+        echo ""
+        echo -e "${GREEN}Create checklist with:${NC}"
+        echo "    cp .githooks/featureBranch.template.json .featureBranch.json"
+        echo "    # Edit .featureBranch.json with your feature details"
+        echo "    git add .featureBranch.json"
+        echo "    git commit -m \"Add feature checklist: [descriptive message]\""
+        echo ""
+        exit 1
+    fi
+
+    # Validate checklist is filled out (not just template)
+    WHAT=$(jq -r '.what' "$CHECKLIST_FILE" 2>/dev/null)
+    WHY=$(jq -r '.why' "$CHECKLIST_FILE" 2>/dev/null)
+    ACCEPTANCE=$(jq -r '.acceptanceCriteria[0]' "$CHECKLIST_FILE" 2>/dev/null)
+
+    if [[ -z "$WHAT" || "$WHAT" == "null" || "$WHAT" == "DESCRIBE_WHAT_YOU_ARE_BUILDING" ]]; then
+        echo -e "${RED}      ✗ Checklist incomplete: 'what' field is empty or not filled${NC}"
+        exit 1
+    fi
+
+    if [[ -z "$WHY" || "$WHY" == "null" || "$WHY" == "DESCRIBE_WHY_THIS_IS_NEEDED" ]]; then
+        echo -e "${RED}      ✗ Checklist incomplete: 'why' field is empty or not filled${NC}"
+        exit 1
+    fi
+
+    if [[ -z "$ACCEPTANCE" || "$ACCEPTANCE" == "null" || "$ACCEPTANCE" == "DEFINE_HOW_TO_VERIFY_COMPLETION" ]]; then
+        echo -e "${RED}      ✗ Checklist incomplete: 'acceptanceCriteria' not defined${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}      ✓ Checklist found and properly filled${NC}"
+    echo "        Feature: $WHAT"
+fi
+
+# ============================================================================
+# RULE 3: Check commit message quality (for feature branches)
+# ============================================================================
+echo -e "\n${YELLOW}[3/3]${NC} Validating commit messages..."
+
+if [[ "$CURRENT_BRANCH" == "feature/"* ]]; then
+    # Get commits being pushed
+    COMMITS=$(git rev-list $REMOTE_SHA..$LOCAL_SHA 2>/dev/null | wc -l)
+
+    if [[ $COMMITS -gt 0 ]]; then
+        echo "      Commits to push: $COMMITS"
+
+        # Check each commit message length (min 20 chars, max 72)
+        while IFS= read -r COMMIT_SHA; do
+            MESSAGE=$(git log --format=%B -n 1 $COMMIT_SHA | head -1)
+            MSG_LENGTH=${#MESSAGE}
+
+            if [[ $MSG_LENGTH -lt 20 ]]; then
+                echo -e "${RED}      ✗ Commit message too short: \"$MESSAGE\" ($MSG_LENGTH chars)${NC}"
+                echo -e "${RED}        Minimum: 20 characters${NC}"
+                exit 1
+            fi
+
+            if [[ $MSG_LENGTH -gt 72 ]]; then
+                echo -e "${YELLOW}      ⚠ Commit message long: \"$MESSAGE\" ($MSG_LENGTH chars)${NC}"
+                echo -e "${YELLOW}        Preferred max: 72 characters${NC}"
+            fi
+        done < <(git rev-list $REMOTE_SHA..$LOCAL_SHA 2>/dev/null)
+
+        echo -e "${GREEN}      ✓ Commit messages validated${NC}"
+    else
+        echo -e "${GREEN}      ✓ No new commits to validate${NC}"
+    fi
+fi
+
+# ============================================================================
+# All validations passed
+# ============================================================================
+echo ""
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}  ✓ All pre-push checks PASSED${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo "Proceeding with push..."
+echo ""
+
+exit 0

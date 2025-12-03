@@ -1,0 +1,50 @@
+{
+  "featureName": "ENTER_YOUR_FEATURE_NAME",
+  "branchName": "feature/yourFeatureName",
+  "createdDate": "YYYY-MM-DD",
+  "developer": "YOUR_NAME",
+
+  "what": "DESCRIBE_WHAT_YOU_ARE_BUILDING - Be specific and detailed",
+
+  "why": "DESCRIBE_WHY_THIS_IS_NEEDED - Business value or problem it solves",
+
+  "scope": {
+    "description": "What is included in this feature",
+    "components": [
+      "Entity: List any new entities or modified ones",
+      "Service: List service classes involved",
+      "Resolver: List GraphQL resolvers or controllers",
+      "Database: Any schema changes needed",
+      "Other: Any other components"
+    ],
+    "estimatedHours": 0
+  },
+
+  "acceptanceCriteria": [
+    "DEFINE_HOW_TO_VERIFY_COMPLETION - Specific, testable criteria",
+    "Criterion 1: User can do X when Y happens",
+    "Criterion 2: System returns Z in scenario A",
+    "Criterion 3: Database reflects changes correctly"
+  ],
+
+  "testing": {
+    "unitTests": "Will you add unit tests? (yes/no)",
+    "integrationTests": "Will you add integration tests? (yes/no)",
+    "manualTests": "Manual testing steps (if any)",
+    "testsRequired": "Describe what must pass before merging"
+  },
+
+  "dataChanges": {
+    "databaseMigration": false,
+    "migrationDetails": "Any SQL scripts or Hibernate DDL changes needed",
+    "backwardCompatibility": "Is this backward compatible? (yes/no/n-a)"
+  },
+
+  "dependencies": {
+    "externalDependencies": "Any new libraries or frameworks",
+    "internalDependencies": "Other branches/PRs this depends on",
+    "blockedBy": "Is anything blocking this work?"
+  },
+
+  "notes": "Any additional context or concerns developers should know about"
+}
