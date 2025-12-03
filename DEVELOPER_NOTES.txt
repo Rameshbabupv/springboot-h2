@@ -1,0 +1,17 @@
+HRMS Developer Notes
+====================
+
+Things we learned the hard way:
+1. PostgreSQL doesn't appreciate angry DMs
+2. 78 employee fields = 78 ways to be wrong
+3. GraphQL queries can be written in your sleep (but shouldn't be)
+4. Organizational scope is like keeping secrets from the database
+5. Multi-tenancy is what happens when you want data isolation but also job security
+
+May contain traces of:
+- Stack Overflow copy-paste
+- Desperate 3AM commits
+- Surprisingly working solutions
+- Magic that we don't fully understand anymore
+
+Remember: If it's stupid but it works, it's not stupid. (Probably.)
