@@ -1,26 +1,33 @@
 package com.hrms.service.impl;
 
+import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
-import com.hrms.entity.Company;
-import com.hrms.entity.Department;
-import com.hrms.entity.Designation;
-import com.hrms.entity.Employee;
+import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.entity.*;
 import com.hrms.exception.ResourceNotFoundException;
-import com.hrms.repository.CompanyRepository;
-import com.hrms.repository.DepartmentRepository;
-import com.hrms.repository.DesignationRepository;
-import com.hrms.repository.EmployeeRepository;
+import com.hrms.exception.ValidationException;
+import com.hrms.mapper.EmployeeMapper;
+import com.hrms.repository.*;
 import com.hrms.service.EmployeeService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Service implementation for Employee operations.
+ * Employee Service Implementation with MapStruct
+ * Clean and maintainable with automatic DTO mapping
  */
 @Slf4j
 @Service
@@ -29,218 +36,534 @@ import java.util.List;
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final EmployeeMapper employeeMapper;
+    private final EntityManager entityManager;
+
+    // Master repositories for required relationships
     private final CompanyRepository companyRepository;
+    private final CompanyLocationRepository companyLocationRepository;
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
+    private final JobFunctionRepository jobFunctionRepository;
+    private final EmploymentTypeRepository employmentTypeRepository;
+
+    // Optional relationship repositories
+    private final DivisionRepository divisionRepository;
+    private final SectionRepository sectionRepository;
+    private final GradeRepository gradeRepository;
+    private final StateRepository stateRepository;
+    private final CityRepository cityRepository;
+
+    // =====================================================
+    // CREATE EMPLOYEE
+    // =====================================================
 
     @Override
-    public List<Employee> getAllEmployees() {
-        log.debug("Fetching all employees");
-        return employeeRepository.findAll();
+    @Transactional
+    public EmployeeResponse createEmployee(EmployeeRequest request) {
+        log.debug("Creating employee: {} for tenant: {}", request.getEmpId(), request.getTenantId());
+
+        // Validate 13 required fields
+        validateRequiredFields(request);
+
+        // Check for duplicate empId
+        if (employeeRepository.findByTenantIdAndEmpId(request.getTenantId(), request.getEmpId()).isPresent()) {
+            throw new ValidationException("Employee ID '" + request.getEmpId() + "' already exists for this tenant");
+        }
+
+        // Map DTO to entity (MapStruct handles all 78 fields automatically!)
+        Employee employee = employeeMapper.toEntity(request);
+
+        // Set required relationships manually (foreign keys)
+        setRequiredRelationships(employee, request);
+
+        // Set optional relationships
+        setOptionalRelationships(employee, request);
+
+        // Save employee
+        Employee savedEmployee = employeeRepository.save(employee);
+        log.info("Employee created successfully with ID: {} for tenant: {}", savedEmployee.getId(), savedEmployee.getTenantId());
+
+        return employeeMapper.toResponse(savedEmployee);
     }
 
+    // =====================================================
+    // UPDATE EMPLOYEE
+    // =====================================================
+
     @Override
-    public Employee getEmployeeById(Long id) {
-        log.debug("Fetching employee with id: {}", id);
-        return employeeRepository.findById(id)
+    @Transactional
+    public EmployeeResponse updateEmployee(String tenantId, Long id, EmployeeRequest request) {
+        log.debug("Updating employee ID: {} for tenant: {}", id, tenantId);
+
+        // Fetch existing employee (tenant-aware)
+        Employee existingEmployee = employeeRepository.findByTenantIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
-    }
 
-    @Override
-    public List<Employee> getEmployeesByTenant(String tenantId) {
-        log.debug("Fetching employees for tenant: {}", tenantId);
-        return employeeRepository.findByTenantId(tenantId);
-    }
+        // Validate required fields
+        validateRequiredFields(request);
 
-    @Override
-    public List<Employee> getEmployeesByCompany(Long companyId) {
-        log.debug("Fetching employees for company: {}", companyId);
-        return employeeRepository.findByCompanyId(companyId);
-    }
-
-    @Override
-    public List<Employee> getEmployeesByDepartment(Long departmentId) {
-        log.debug("Fetching employees for department: {}", departmentId);
-        return employeeRepository.findByDepartmentId(departmentId);
-    }
-
-    @Override
-    public List<Employee> getActiveEmployees() {
-        log.debug("Fetching active employees");
-        return employeeRepository.findByIsActiveTrue();
-    }
-
-    @Override
-    public List<Employee> getEmployeesByStatus(String status) {
-        log.debug("Fetching employees with status: {}", status);
-        return employeeRepository.findByEmployeeStatus(status);
-    }
-
-    @Override
-    @Transactional
-    public Employee createEmployee(EmployeeRequest request) {
-        log.debug("Creating new employee: {}", request.getEmployeeName());
-
-        Employee employee = mapToEntity(request);
-        Employee saved = employeeRepository.save(employee);
-
-        log.info("Created employee with id: {}", saved.getId());
-        return saved;
-    }
-
-    @Override
-    @Transactional
-    public Employee updateEmployee(Long id, EmployeeRequest request) {
-        log.debug("Updating employee with id: {}", id);
-
-        Employee existing = getEmployeeById(id);
-        updateEntityFromRequest(existing, request);
-        Employee updated = employeeRepository.save(existing);
-
-        log.info("Updated employee with id: {}", id);
-        return updated;
-    }
-
-    @Override
-    @Transactional
-    public void deleteEmployee(Long id) {
-        log.debug("Deleting employee with id: {}", id);
-
-        if (!employeeRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Employee", "id", id);
+        // Check for duplicate empId (if changed)
+        if (!existingEmployee.getEmpId().equals(request.getEmpId())) {
+            if (employeeRepository.findByTenantIdAndEmpId(request.getTenantId(), request.getEmpId()).isPresent()) {
+                throw new ValidationException("Employee ID '" + request.getEmpId() + "' already exists");
+            }
         }
-        employeeRepository.deleteById(id);
 
-        log.info("Deleted employee with id: {}", id);
+        // Update entity from request (MapStruct handles all fields!)
+        employeeMapper.updateEntityFromRequest(request, existingEmployee);
+
+        // Update relationships
+        setRequiredRelationships(existingEmployee, request);
+        setOptionalRelationships(existingEmployee, request);
+
+        // Save updated employee
+        Employee savedEmployee = employeeRepository.save(existingEmployee);
+        log.info("Employee updated successfully with ID: {}", savedEmployee.getId());
+
+        return employeeMapper.toResponse(savedEmployee);
+    }
+
+    // =====================================================
+    // READ OPERATIONS
+    // =====================================================
+
+    @Override
+    public EmployeeResponse getEmployeeById(String tenantId, Long id) {
+        log.debug("Fetching employee ID: {} for tenant: {}", id, tenantId);
+        Employee employee = employeeRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
+        return employeeMapper.toResponse(employee);
     }
 
     @Override
-    public boolean existsById(Long id) {
-        return employeeRepository.existsById(id);
+    public EmployeeResponse getEmployeeByEmpId(String tenantId, String empId) {
+        log.debug("Fetching employee by empId: {} for tenant: {}", empId, tenantId);
+        Employee employee = employeeRepository.findByTenantIdAndEmpId(tenantId, empId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", "empId", empId));
+        return employeeMapper.toResponse(employee);
     }
 
-    private Employee mapToEntity(EmployeeRequest request) {
-        Employee employee = new Employee();
-        employee.setTenantId(request.getTenantId());
+    @Override
+    public List<EmployeeResponse> getAllEmployeesByTenant(String tenantId) {
+        log.debug("Fetching all employees for tenant: {}", tenantId);
+        return employeeRepository.findByTenantId(tenantId).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 
-        // Set company
+    @Override
+    public List<EmployeeResponse> getEmployeesByCompany(String tenantId, Long companyId) {
+        log.debug("Fetching employees for company: {} and tenant: {}", companyId, tenantId);
+        return employeeRepository.findByTenantIdAndCompany_Id(tenantId, companyId).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EmployeeResponse> getEmployeesByDepartment(String tenantId, Long departmentId) {
+        log.debug("Fetching employees for department: {} and tenant: {}", departmentId, tenantId);
+        return employeeRepository.findByTenantIdAndDepartment_Id(tenantId, departmentId).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EmployeeResponse> getEmployeesByDesignation(String tenantId, Long designationId) {
+        log.debug("Fetching employees for designation: {} and tenant: {}", designationId, tenantId);
+        return employeeRepository.findByTenantIdAndDesignation_Id(tenantId, designationId).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EmployeeResponse> getEmployeesByStatus(String tenantId, String status) {
+        log.debug("Fetching employees with status: {} for tenant: {}", status, tenantId);
+        return employeeRepository.findByTenantIdAndEmployeeStatus(tenantId, status).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EmployeeResponse> getEmployeesByReportingManager(String tenantId, Long managerId) {
+        log.debug("Fetching employees reporting to manager: {} for tenant: {}", managerId, tenantId);
+        return employeeRepository.findByTenantIdAndReportingManager_Id(tenantId, managerId).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EmployeeResponse> searchEmployees(String tenantId, String searchTerm) {
+        log.debug("Searching employees with term: {} for tenant: {}", searchTerm, tenantId);
+        return employeeRepository.searchEmployees(tenantId, searchTerm).stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // =====================================================
+    // DELETE OPERATION
+    // =====================================================
+
+    @Override
+    @Transactional
+    public void deleteEmployee(String tenantId, Long id) {
+        log.debug("Deleting employee ID: {} for tenant: {}", id, tenantId);
+        Employee employee = employeeRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
+        employeeRepository.delete(employee);
+        log.info("Employee deleted successfully with ID: {}", id);
+    }
+
+    // =====================================================
+    // UTILITY METHODS
+    // =====================================================
+
+    @Override
+    public long getEmployeeCountByTenant(String tenantId) {
+        return employeeRepository.countByTenantId(tenantId);
+    }
+
+    @Override
+    public long getEmployeeCountByStatus(String tenantId, String status) {
+        return employeeRepository.countByTenantIdAndStatus(tenantId, status);
+    }
+
+    @Override
+    public boolean existsByEmpId(String tenantId, String empId) {
+        return employeeRepository.findByTenantIdAndEmpId(tenantId, empId).isPresent();
+    }
+
+    // =====================================================
+    // PRIVATE HELPER METHODS
+    // =====================================================
+
+    /**
+     * Validates the 13 required fields for employee creation
+     */
+    private void validateRequiredFields(EmployeeRequest request) {
+        StringBuilder errors = new StringBuilder();
+
+        // Tenant (1 field)
+        if (request.getTenantId() == null || request.getTenantId().isBlank()) {
+            errors.append("Tenant ID is required. ");
+        }
+
+        // Organizational (6 fields)
+        if (request.getCompanyId() == null) errors.append("Company is required. ");
+        if (request.getLocationId() == null) errors.append("Location is required. ");
+        if (request.getDepartmentId() == null) errors.append("Department is required. ");
+        if (request.getDesignationId() == null) errors.append("Designation is required. ");
+        if (request.getJobFunctionId() == null) errors.append("Job Function is required. ");
+        if (request.getEmploymentTypeId() == null) errors.append("Employment Type is required. ");
+
+        // Identity (3 fields)
+        if (request.getEmpId() == null || request.getEmpId().isBlank()) {
+            errors.append("Employee ID is required. ");
+        }
+        if (request.getEmployeeName() == null || request.getEmployeeName().isBlank()) {
+            errors.append("Employee Name is required. ");
+        }
+        if (request.getDateOfJoin() == null || request.getDateOfJoin().isBlank()) {
+            errors.append("Date of Joining is required. ");
+        }
+
+        // Statutory (2 fields)
+        if (request.getDateOfBirth() == null || request.getDateOfBirth().isBlank()) {
+            errors.append("Date of Birth is required. ");
+        }
+        if (request.getGender() == null || request.getGender().isBlank()) {
+            errors.append("Gender is required. ");
+        }
+
+        // Note: Aadhaar and PAN validation is done by @NotBlank in DTO
+
+        if (errors.length() > 0) {
+            throw new ValidationException("Validation failed: " + errors.toString());
+        }
+    }
+
+    /**
+     * Sets required foreign key relationships (6 required masters)
+     */
+    private void setRequiredRelationships(Employee employee, EmployeeRequest request) {
+        // Company (required)
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company", "id", request.getCompanyId()));
         employee.setCompany(company);
 
-        employee.setEmpId(request.getEmpId());
-        employee.setEmployeeName(request.getEmployeeName());
-        employee.setGender(request.getGender());
+        // Location (required)
+        CompanyLocation location = companyLocationRepository.findById(request.getLocationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Location", "id", request.getLocationId()));
+        employee.setLocation(location);
 
-        if (request.getDateOfBirth() != null) {
-            employee.setDateOfBirth(LocalDate.parse(request.getDateOfBirth()));
-        }
-        employee.setDateOfJoin(LocalDate.parse(request.getDateOfJoin()));
+        // Department (required)
+        Department department = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Department", "id", request.getDepartmentId()));
+        employee.setDepartment(department);
 
-        employee.setMobileNo(request.getMobileNo());
-        employee.setEmailId(request.getEmailId());
-        employee.setBloodGroup(request.getBloodGroup());
-        employee.setMaritalStatus(request.getMaritalStatus());
+        // Designation (required)
+        Designation designation = designationRepository.findById(request.getDesignationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Designation", "id", request.getDesignationId()));
+        employee.setDesignation(designation);
 
-        // Set department if provided
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department", "id", request.getDepartmentId()));
-            employee.setDepartment(department);
-        }
+        // Job Function (required)
+        JobFunction jobFunction = jobFunctionRepository.findById(request.getJobFunctionId())
+                .orElseThrow(() -> new ResourceNotFoundException("JobFunction", "id", request.getJobFunctionId()));
+        employee.setJobFunction(jobFunction);
 
-        // Set designation if provided
-        if (request.getDesignationId() != null) {
-            Designation designation = designationRepository.findById(request.getDesignationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Designation", "id", request.getDesignationId()));
-            employee.setDesignation(designation);
-        }
-
-        // Set reporting manager if provided
-        if (request.getReportingManagerId() != null) {
-            Employee manager = employeeRepository.findById(request.getReportingManagerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", request.getReportingManagerId()));
-            employee.setReportingManager(manager);
-        }
-
-        employee.setBasicSalary(request.getBasicSalary());
-        employee.setGrossSalary(request.getGrossSalary());
-        employee.setCtc(request.getCtc());
-        employee.setAadharNo(request.getAadharNo());
-        employee.setPanNo(request.getPanNo());
-        employee.setUan(request.getUan());
-        employee.setCoverPf(request.getCoverPf() != null ? request.getCoverPf() : false);
-        employee.setPfNumber(request.getPfNumber());
-        employee.setCoverEsi(request.getCoverEsi() != null ? request.getCoverEsi() : false);
-        employee.setEsiNumber(request.getEsiNumber());
-        employee.setEmployeeStatus(request.getEmployeeStatus());
-        employee.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
-
-        return employee;
+        // Employment Type (required)
+        EmploymentType employmentType = employmentTypeRepository.findById(request.getEmploymentTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("EmploymentType", "id", request.getEmploymentTypeId()));
+        employee.setEmploymentType(employmentType);
     }
 
-    private void updateEntityFromRequest(Employee employee, EmployeeRequest request) {
-        employee.setTenantId(request.getTenantId());
-
-        // Update company
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Company", "id", request.getCompanyId()));
-        employee.setCompany(company);
-
-        employee.setEmpId(request.getEmpId());
-        employee.setEmployeeName(request.getEmployeeName());
-        employee.setGender(request.getGender());
-
-        if (request.getDateOfBirth() != null) {
-            employee.setDateOfBirth(LocalDate.parse(request.getDateOfBirth()));
-        }
-        employee.setDateOfJoin(LocalDate.parse(request.getDateOfJoin()));
-
-        employee.setMobileNo(request.getMobileNo());
-        employee.setEmailId(request.getEmailId());
-        employee.setBloodGroup(request.getBloodGroup());
-        employee.setMaritalStatus(request.getMaritalStatus());
-
-        // Update department
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department", "id", request.getDepartmentId()));
-            employee.setDepartment(department);
-        } else {
-            employee.setDepartment(null);
+    /**
+     * Sets optional foreign key relationships
+     */
+    private void setOptionalRelationships(Employee employee, EmployeeRequest request) {
+        // Division (optional)
+        if (request.getDivisionId() != null) {
+            Division division = divisionRepository.findById(request.getDivisionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Division", "id", request.getDivisionId()));
+            employee.setDivision(division);
         }
 
-        // Update designation
-        if (request.getDesignationId() != null) {
-            Designation designation = designationRepository.findById(request.getDesignationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Designation", "id", request.getDesignationId()));
-            employee.setDesignation(designation);
-        } else {
-            employee.setDesignation(null);
+        // Section (optional)
+        if (request.getSectionId() != null) {
+            Section section = sectionRepository.findById(request.getSectionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Section", "id", request.getSectionId()));
+            employee.setSection(section);
         }
 
-        // Update reporting manager
+        // Grade (optional)
+        if (request.getGradeId() != null) {
+            Grade grade = gradeRepository.findById(request.getGradeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Grade", "id", request.getGradeId()));
+            employee.setGrade(grade);
+        }
+
+        // Reporting Manager (optional, self-reference)
         if (request.getReportingManagerId() != null) {
             Employee manager = employeeRepository.findById(request.getReportingManagerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", request.getReportingManagerId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Reporting Manager", "id", request.getReportingManagerId()));
             employee.setReportingManager(manager);
-        } else {
-            employee.setReportingManager(null);
         }
 
-        employee.setBasicSalary(request.getBasicSalary());
-        employee.setGrossSalary(request.getGrossSalary());
-        employee.setCtc(request.getCtc());
-        employee.setAadharNo(request.getAadharNo());
-        employee.setPanNo(request.getPanNo());
-        employee.setUan(request.getUan());
-        employee.setCoverPf(request.getCoverPf() != null ? request.getCoverPf() : false);
-        employee.setPfNumber(request.getPfNumber());
-        employee.setCoverEsi(request.getCoverEsi() != null ? request.getCoverEsi() : false);
-        employee.setEsiNumber(request.getEsiNumber());
-        employee.setEmployeeStatus(request.getEmployeeStatus());
-        if (request.getIsActive() != null) {
-            employee.setIsActive(request.getIsActive());
+        // State (optional)
+        if (request.getStateId() != null) {
+            State state = stateRepository.findById(request.getStateId())
+                    .orElseThrow(() -> new ResourceNotFoundException("State", "id", request.getStateId()));
+            employee.setState(state);
         }
+
+        // City (optional)
+        if (request.getCityId() != null) {
+            City city = cityRepository.findById(request.getCityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("City", "id", request.getCityId()));
+            employee.setCity(city);
+        }
+    }
+
+    // =====================================================
+    // NEW: ADVANCED FILTERING WITH ORGANIZATIONAL SCOPE
+    // =====================================================
+
+    @Override
+    public Page<EmployeeResponse> getFilteredEmployees(EmployeeFilterCriteria criteria) {
+        log.debug("Fetching filtered employees for tenant: {}", criteria.getTenantId());
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Employee> query = cb.createQuery(Employee.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build WHERE clause with all filters
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.where(predicates.toArray(new Predicate[0]));
+
+        // Apply sorting
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isEmpty()) {
+            if ("DESC".equalsIgnoreCase(criteria.getSortDirection())) {
+                query.orderBy(cb.desc(root.get(criteria.getSortBy())));
+            } else {
+                query.orderBy(cb.asc(root.get(criteria.getSortBy())));
+            }
+        } else {
+            query.orderBy(cb.desc(root.get("id"))); // Default sort by ID desc
+        }
+
+        // Execute query with pagination
+        TypedQuery<Employee> typedQuery = entityManager.createQuery(query);
+
+        int page = criteria.getPage() != null ? criteria.getPage() : 0;
+        int size = criteria.getSize() != null ? criteria.getSize() : 20;
+
+        typedQuery.setFirstResult(page * size);
+        typedQuery.setMaxResults(size);
+
+        List<Employee> employees = typedQuery.getResultList();
+        long total = countFilteredEmployees(criteria);
+
+        // Convert to responses
+        List<EmployeeResponse> responses = employees.stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+
+        PageRequest pageRequest = PageRequest.of(page, size);
+        return new PageImpl<>(responses, pageRequest, total);
+    }
+
+    @Override
+    public long countFilteredEmployees(EmployeeFilterCriteria criteria) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build same WHERE clause
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.select(cb.count(root));
+        query.where(predicates.toArray(new Predicate[0]));
+
+        return entityManager.createQuery(query).getSingleResult();
+    }
+
+    @Override
+    public List<EmployeeResponse> getFilteredEmployeesList(EmployeeFilterCriteria criteria) {
+        log.debug("Fetching filtered employees list for tenant: {}", criteria.getTenantId());
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Employee> query = cb.createQuery(Employee.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build WHERE clause
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.where(predicates.toArray(new Predicate[0]));
+
+        // Apply sorting
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isEmpty()) {
+            if ("DESC".equalsIgnoreCase(criteria.getSortDirection())) {
+                query.orderBy(cb.desc(root.get(criteria.getSortBy())));
+            } else {
+                query.orderBy(cb.asc(root.get(criteria.getSortBy())));
+            }
+        }
+
+        List<Employee> employees = entityManager.createQuery(query).getResultList();
+
+        return employees.stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Build predicates for filtering
+     * Supports all 9 organizational parameters + search + status
+     */
+    private List<Predicate> buildPredicates(CriteriaBuilder cb, Root<Employee> root, EmployeeFilterCriteria criteria) {
+        List<Predicate> predicates = new ArrayList<>();
+
+        // REQUIRED: Tenant filter
+        if (criteria.getTenantId() != null) {
+            predicates.add(cb.equal(root.get("tenantId"), criteria.getTenantId()));
+        }
+
+        // 1. Company filter
+        if (criteria.hasCompanyFilter()) {
+            predicates.add(root.get("company").get("id").in(criteria.getCompanyIds()));
+        }
+
+        // 2. Location filter with company-location relationship validation
+        if (criteria.hasLocationFilter()) {
+            // Employee's location must be in the allowed location IDs
+            Predicate locationInScope = root.get("location").get("id").in(criteria.getLocationIds());
+
+            // AND the employee's location must belong to the employee's company
+            // This prevents invalid combinations like:
+            // - Employee with Company 2 + Location 2 (when Location 2 belongs to Company 1)
+            Predicate locationBelongsToCompany = cb.equal(
+                root.get("location").get("company").get("id"),
+                root.get("company").get("id")
+            );
+
+            predicates.add(cb.and(locationInScope, locationBelongsToCompany));
+        }
+
+        // 3. Division filter
+        // Include employees with NULL division (not assigned) - they match any filter
+        if (criteria.hasDivisionFilter()) {
+            Predicate divisionIn = root.get("division").get("id").in(criteria.getDivisionIds());
+            Predicate divisionIsNull = cb.isNull(root.get("division"));
+            predicates.add(cb.or(divisionIn, divisionIsNull));
+        }
+
+        // 4. Department filter
+        // Include employees with NULL department (not assigned) - they match any filter
+        if (criteria.hasDepartmentFilter()) {
+            Predicate departmentIn = root.get("department").get("id").in(criteria.getDepartmentIds());
+            Predicate departmentIsNull = cb.isNull(root.get("department"));
+            predicates.add(cb.or(departmentIn, departmentIsNull));
+        }
+
+        // 5. Section filter
+        // Include employees with NULL section (not assigned) - they match any filter
+        if (criteria.hasSectionFilter()) {
+            Predicate sectionIn = root.get("section").get("id").in(criteria.getSectionIds());
+            Predicate sectionIsNull = cb.isNull(root.get("section"));
+            predicates.add(cb.or(sectionIn, sectionIsNull));
+        }
+
+        // 6. Designation filter
+        // Include employees with NULL designation (not assigned) - they match any filter
+        if (criteria.hasDesignationFilter()) {
+            Predicate designationIn = root.get("designation").get("id").in(criteria.getDesignationIds());
+            Predicate designationIsNull = cb.isNull(root.get("designation"));
+            predicates.add(cb.or(designationIn, designationIsNull));
+        }
+
+        // 7. Grade filter
+        // Include employees with NULL grade (not assigned) - they match any filter
+        if (criteria.hasGradeFilter()) {
+            Predicate gradeIn = root.get("grade").get("id").in(criteria.getGradeIds());
+            Predicate gradeIsNull = cb.isNull(root.get("grade"));
+            predicates.add(cb.or(gradeIn, gradeIsNull));
+        }
+
+        // 8. Job Function filter
+        // Include employees with NULL job function (not assigned) - they match any filter
+        if (criteria.hasJobFunctionFilter()) {
+            Predicate jobFunctionIn = root.get("jobFunction").get("id").in(criteria.getJobFunctionIds());
+            Predicate jobFunctionIsNull = cb.isNull(root.get("jobFunction"));
+            predicates.add(cb.or(jobFunctionIn, jobFunctionIsNull));
+        }
+
+        // 9. Employment Type filter
+        // Include employees with NULL employment type (not assigned) - they match any filter
+        if (criteria.hasEmploymentTypeFilter()) {
+            Predicate employmentTypeIn = root.get("employmentType").get("id").in(criteria.getEmploymentTypeIds());
+            Predicate employmentTypeIsNull = cb.isNull(root.get("employmentType"));
+            predicates.add(cb.or(employmentTypeIn, employmentTypeIsNull));
+        }
+
+        // Additional filters
+
+        // Search query (employee name, emp_id, email)
+        if (criteria.hasSearchQuery()) {
+            String searchPattern = "%" + criteria.getSearchQuery().toLowerCase() + "%";
+            Predicate namePredicate = cb.like(cb.lower(root.get("employeeName")), searchPattern);
+            Predicate empIdPredicate = cb.like(cb.lower(root.get("empId")), searchPattern);
+            Predicate emailPredicate = cb.like(cb.lower(root.get("emailId")), searchPattern);
+            predicates.add(cb.or(namePredicate, empIdPredicate, emailPredicate));
+        }
+
+        // Employee status filter
+        if (criteria.hasEmployeeStatusFilter()) {
+            predicates.add(cb.equal(root.get("employeeStatus"), criteria.getEmployeeStatus()));
+        }
+
+        // Reporting manager filter
+        if (criteria.hasReportingManagerFilter()) {
+            predicates.add(cb.equal(root.get("reportingManager").get("id"), criteria.getReportingManagerId()));
+        }
+
+        return predicates;
     }
 }

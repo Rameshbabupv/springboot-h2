@@ -1,0 +1,296 @@
+# =====================================================
+# EMPLOYEE SCHEMA - Complete 78 Field Definition
+# Overwrites/extends the basic Employee type
+# =====================================================
+
+extend type Query {
+    # Tenant-aware employee queries
+    employeeById(tenantId: String!, id: ID!): Employee
+    employeeByEmpId(tenantId: String!, empId: String!): Employee
+    employeesByTenant(tenantId: String!): [Employee!]!
+    employeesByCompany(tenantId: String!, companyId: ID!): [Employee!]!
+    employeesByDepartment(tenantId: String!, departmentId: ID!): [Employee!]!
+    employeesByDesignation(tenantId: String!, designationId: ID!): [Employee!]!
+    employeesByStatus(tenantId: String!, status: String!): [Employee!]!
+    employeesByReportingManager(tenantId: String!, managerId: ID!): [Employee!]!
+    searchEmployees(tenantId: String!, searchTerm: String!): [Employee!]!
+    employeeCount(tenantId: String!): Int!
+    employeeCountByStatus(tenantId: String!, status: String!): Int!
+
+    # NEW: Advanced filtered employee queries with organizational scope
+    filteredEmployees(
+        tenantId: String!
+        userId: ID!
+        companyIds: [ID!]
+        locationIds: [ID!]
+        divisionIds: [ID!]
+        departmentIds: [ID!]
+        sectionIds: [ID!]
+        designationIds: [ID!]
+        gradeIds: [ID!]
+        jobFunctionIds: [ID!]
+        employmentTypeIds: [ID!]
+        searchQuery: String
+        employeeStatus: String
+        reportingManagerId: ID
+        page: Int
+        size: Int
+        sortBy: String
+        sortDirection: String
+    ): EmployeePageResponse!
+
+    filteredEmployeesCount(
+        tenantId: String!
+        userId: ID!
+        companyIds: [ID!]
+        locationIds: [ID!]
+        divisionIds: [ID!]
+        departmentIds: [ID!]
+        sectionIds: [ID!]
+        designationIds: [ID!]
+        gradeIds: [ID!]
+        jobFunctionIds: [ID!]
+        employmentTypeIds: [ID!]
+        searchQuery: String
+        employeeStatus: String
+        reportingManagerId: ID
+    ): Int!
+}
+
+extend type Mutation {
+    # Employee CRUD operations (tenant extracted from input)
+    createEmployee(input: EmployeeInput!): Employee!
+    updateEmployee(tenantId: String!, id: ID!, input: EmployeeInput!): Employee!
+    deleteEmployee(tenantId: String!, id: ID!): Boolean!
+}
+
+# Complete Employee type with all 78 fields
+type Employee {
+    # Primary Key & Tenant
+    id: ID!
+    tenantId: String!
+
+    # Organizational Assignment (Required: 6 fields)
+    company: Company!
+    location: CompanyLocation!
+    department: Department!
+    designation: Designation!
+    jobFunction: JobFunction!
+    employmentType: EmploymentType!
+    
+    # Optional organizational
+    division: Division
+    section: Section
+    grade: Grade
+    reportingManager: Employee
+
+    # Employment Details (Required: 3 fields)
+    empId: String!
+    employeeName: String!
+    dateOfJoin: String!
+    
+    # Optional employment fields
+    dateOfConfirm: String
+    dateOfRetirement: String
+    employeeStatus: String
+    experience: String
+    sourceOfHire: String
+    noticePeriod: String
+
+    # Personal Information (Required: 2 fields)
+    dateOfBirth: String!
+    gender: String!
+    
+    # Optional personal fields
+    fatherName: String
+    age: Int
+    bloodGroup: String
+    maritalStatus: String
+    religion: String
+    graduation: String
+
+    # Contact Information (All Optional)
+    address1: String
+    address2: String
+    state: State
+    city: City
+    pincode: String
+    mobileNo: String
+    emailId: String
+    officialEmailId: String
+    emergencyNoOne: String
+    emergencyNoTwo: String
+
+    # Compensation & Payroll (All Optional)
+    wages: Float
+    grossAmount: Float
+    ctc: Float
+    takeHome: Float
+    effectFromSalary: String
+    fetchFromTemplate: Boolean
+    templateId: ID
+
+    # Banking details
+    bankAccountNo: String
+    bankName: String
+    bankBranch: String
+    ifscCode: String
+    paymentMode: String
+
+    # Statutory Documents (Required: 2 fields)
+    aadharNo: String!
+    panNo: String!
+    
+    # Optional statutory
+    passportNo: String
+    dlNo: String
+
+    # PF Details
+    coverPf: Boolean
+    uanNo: String
+    pfCode: String
+    pfEnrollmentDate: String
+
+    # ESI Details
+    coverEsi: Boolean
+    esiCode: String
+    insuranceNo: String
+
+    # Additional Details
+    shiftOrBatch: String
+    shiftId: ID
+    employeeBatchId: ID
+    compOff: Boolean
+    otIncentive: Boolean
+    otAmount: Float
+    attIncentive: Boolean
+    shiftIncentive: Boolean
+    routeId: ID
+    km: Float
+    ext: String
+    seatingLocation: String
+
+    # Audit Fields
+    createdBy: ID
+    createdAt: String
+    updatedBy: ID
+    updatedAt: String
+}
+
+# Employee Input - Flat structure for mutations
+input EmployeeInput {
+    # Tenant (Required)
+    tenantId: String!
+
+    # Organizational Assignment (Required: 6 fields)
+    companyId: ID!
+    locationId: ID!
+    departmentId: ID!
+    designationId: ID!
+    jobFunctionId: ID!
+    employmentTypeId: ID!
+    
+    # Optional organizational
+    divisionId: ID
+    sectionId: ID
+    gradeId: ID
+    reportingManagerId: ID
+
+    # Employment Details (Required: 3 fields)
+    empId: String!
+    employeeName: String!
+    dateOfJoin: String!
+    
+    # Optional employment
+    dateOfConfirm: String
+    dateOfRetirement: String
+    employeeStatus: String
+    experience: String
+    sourceOfHire: String
+    noticePeriod: String
+
+    # Personal Information (Required: 2 fields)
+    dateOfBirth: String!
+    gender: String!
+    
+    # Optional personal
+    fatherName: String
+    age: Int
+    bloodGroup: String
+    maritalStatus: String
+    religion: String
+    graduation: String
+
+    # Contact Information
+    address1: String
+    address2: String
+    stateId: ID
+    cityId: ID
+    pincode: String
+    mobileNo: String
+    emailId: String
+    officialEmailId: String
+    emergencyNoOne: String
+    emergencyNoTwo: String
+
+    # Compensation & Payroll
+    wages: Float
+    grossAmount: Float
+    ctc: Float
+    takeHome: Float
+    effectFromSalary: String
+    fetchFromTemplate: Boolean
+    templateId: ID
+    bankAccountNo: String
+    bankName: String
+    bankBranch: String
+    ifscCode: String
+    paymentMode: String
+
+    # Statutory Documents (Required: 2 fields)
+    aadharNo: String!
+    panNo: String!
+    
+    # Optional statutory
+    passportNo: String
+    dlNo: String
+    coverPf: Boolean
+    uanNo: String
+    pfCode: String
+    pfEnrollmentDate: String
+    coverEsi: Boolean
+    esiCode: String
+    insuranceNo: String
+
+    # Additional Details
+    shiftOrBatch: String
+    shiftId: ID
+    employeeBatchId: ID
+    compOff: Boolean
+    otIncentive: Boolean
+    otAmount: Float
+    attIncentive: Boolean
+    shiftIncentive: Boolean
+    routeId: ID
+    km: Float
+    ext: String
+    seatingLocation: String
+
+    # Audit Fields
+    createdBy: ID
+    updatedBy: ID
+}
+
+# =====================================================
+# NEW: Pagination Response Types
+# =====================================================
+
+type EmployeePageResponse {
+    content: [Employee!]!
+    totalElements: Int!
+    totalPages: Int!
+    currentPage: Int!
+    pageSize: Int!
+    hasNext: Boolean!
+    hasPrevious: Boolean!
+}

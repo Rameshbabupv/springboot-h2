@@ -1,6 +1,7 @@
 package com.hrms.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,10 +22,12 @@ public class EmploymentTypeRequest {
 
     @NotBlank(message = "Employment type name is required")
     @Size(min = 2, max = 100, message = "Employment type name must be between 2 and 100 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9\\s&\\-/]+$", message = "Employment type name can only contain letters, numbers, spaces, &, -, and /")
     private String name;
 
     @NotBlank(message = "Employment type code is required")
     @Size(min = 2, max = 20, message = "Employment type code must be between 2 and 20 characters")
+    @Pattern(regexp = "^[A-Z0-9\\-_]+$", message = "Employment type code can only contain uppercase letters, numbers, -, and _")
     private String code;
 
     @Size(max = 500, message = "Description must not exceed 500 characters")
@@ -32,4 +35,8 @@ public class EmploymentTypeRequest {
 
     @Builder.Default
     private Boolean isActive = true;
+
+    private String createdBy;
+
+    private String updatedBy;
 }

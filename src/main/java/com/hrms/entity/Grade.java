@@ -5,13 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "grades", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"tenantId", "code"})
+    @UniqueConstraint(columnNames = {"tenantId", "code"}),
+    @UniqueConstraint(columnNames = {"tenantId", "name"})
 })
 @Data
 @NoArgsConstructor
@@ -22,30 +23,31 @@ public class Grade {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 50)
     private String tenantId;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 20)
     private String code;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 500)
     private String description;
-
-    private Integer level;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal minSalary;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal maxSalary;
 
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    @Column(length = 50)
+    private String createdBy;
+
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
+
+    @Column(length = 50)
+    private String updatedBy;
+
+    @UpdateTimestamp
+    private OffsetDateTime updatedAt;
 }

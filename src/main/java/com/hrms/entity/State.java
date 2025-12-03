@@ -5,12 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "states", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"tenantId", "code"})
+    @UniqueConstraint(columnNames = {"tenantId", "countryId", "code"}),
+    @UniqueConstraint(columnNames = {"tenantId", "countryId", "name"})
 })
 @Data
 @NoArgsConstructor
@@ -21,22 +23,44 @@ public class State {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 50)
     private String tenantId;
+
+    @Column(name = "country_id", nullable = false)
+    private Long countryId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "country_id", insertable = false, updatable = false)
+    private Country country;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 10)
     private String code;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 10)
+    private String stateCode;
+
+    @Column(nullable = false)
+    private Boolean isUnionTerritory = false;
+
+    @Column(length = 500)
     private String description;
 
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    @Column(length = 50)
+    private String createdBy;
+
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
+
+    @Column(length = 50)
+    private String updatedBy;
+
+    @UpdateTimestamp
+    private OffsetDateTime updatedAt;
 }

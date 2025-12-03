@@ -1,0 +1,103 @@
+# User Privileges Management Schema
+
+# HRMS Module Type
+type HrmsModule {
+    id: ID!
+    tenantId: String!
+    moduleCode: String!
+    moduleName: String!
+    moduleCategory: String
+    parentModuleCode: String
+    displayOrder: Int
+    isActive: Boolean
+}
+
+# User Privilege Type
+type UserPrivilege {
+    id: ID!
+    tenantId: String!
+    userId: ID!
+    moduleCode: String!
+    canView: Boolean
+    canAdd: Boolean
+    canEdit: Boolean
+    canDelete: Boolean
+    canApprove: Boolean
+    canBackdate: Boolean
+    backdateDays: Int
+    menuOverrides: JSON
+    createdAt: String
+    updatedAt: String
+    createdBy: String
+    updatedBy: String
+}
+
+# User Organizational Scope Type
+type UserOrganizationalScope {
+    id: ID!
+    tenantId: String!
+    userId: ID!
+    scopeType: String!
+    scopeId: ID!
+    createdAt: String
+    createdBy: String
+}
+
+# Input Types
+input UserPrivilegeInput {
+    moduleCode: String!
+    canView: Boolean
+    canAdd: Boolean
+    canEdit: Boolean
+    canDelete: Boolean
+    canApprove: Boolean
+    canBackdate: Boolean
+    backdateDays: Int
+    menuOverrides: JSON
+}
+
+input OrganizationalScopeInput {
+    scopeType: String!
+    scopeId: ID!
+}
+
+# Queries
+extend type Query {
+    # Get all HRMS modules
+    hrmsModules(tenantId: String!): [HrmsModule]
+
+    # Get HRMS modules by category
+    hrmsModulesByCategory(tenantId: String!, category: String!): [HrmsModule]
+
+    # Get user privileges
+    userPrivileges(tenantId: String!, userId: ID!): [UserPrivilege]
+
+    # Get user organizational scope
+    userOrganizationalScope(tenantId: String!, userId: ID!): [UserOrganizationalScope]
+
+    # Check if user has any permission for a module
+    hasAnyPermission(tenantId: String!, userId: ID!, moduleCode: String!): Boolean
+}
+
+# Mutations
+extend type Mutation {
+    # Save user privileges (bulk save/update)
+    saveUserPrivileges(
+        tenantId: String!
+        userId: ID!
+        privileges: [UserPrivilegeInput!]!
+    ): [UserPrivilege]
+
+    # Delete all privileges for a user
+    deleteUserPrivileges(tenantId: String!, userId: ID!): Boolean
+
+    # Save organizational scope (bulk save)
+    saveOrganizationalScope(
+        tenantId: String!
+        userId: ID!
+        scopes: [OrganizationalScopeInput!]!
+    ): [UserOrganizationalScope]
+
+    # Delete organizational scope for a user
+    deleteOrganizationalScope(tenantId: String!, userId: ID!): Boolean
+}

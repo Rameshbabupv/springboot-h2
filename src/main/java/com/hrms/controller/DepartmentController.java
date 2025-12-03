@@ -53,6 +53,22 @@ public class DepartmentController {
         return ResponseEntity.ok(ApiResponse.success("Active departments fetched successfully", departments));
     }
 
+    @GetMapping("/tenant/{tenantId}/active")
+    @Operation(summary = "Get active departments by tenant ID")
+    public ResponseEntity<ApiResponse<List<Department>>> getActiveDepartmentsByTenant(@PathVariable String tenantId) {
+        List<Department> departments = departmentService.getActiveDepartmentsByTenant(tenantId);
+        return ResponseEntity.ok(ApiResponse.success("Active departments fetched successfully", departments));
+    }
+
+    @GetMapping("/tenant/{tenantId}/search")
+    @Operation(summary = "Search departments by name, code, or description")
+    public ResponseEntity<ApiResponse<List<Department>>> searchDepartments(
+            @PathVariable String tenantId,
+            @RequestParam(required = false) String searchTerm) {
+        List<Department> departments = departmentService.searchDepartments(tenantId, searchTerm);
+        return ResponseEntity.ok(ApiResponse.success("Departments search completed successfully", departments));
+    }
+
     @PostMapping
     @Operation(summary = "Create a new department")
     public ResponseEntity<ApiResponse<Department>> createDepartment(@Valid @RequestBody DepartmentRequest request) {

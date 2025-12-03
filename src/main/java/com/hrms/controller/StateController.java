@@ -46,11 +46,43 @@ public class StateController {
         return ResponseEntity.ok(ApiResponse.success("States fetched successfully", states));
     }
 
+    @GetMapping("/tenant/{tenantId}/active")
+    @Operation(summary = "Get active states by tenant ID")
+    public ResponseEntity<ApiResponse<List<State>>> getActiveStatesByTenant(@PathVariable String tenantId) {
+        List<State> states = stateService.getActiveStatesByTenant(tenantId);
+        return ResponseEntity.ok(ApiResponse.success("Active states fetched successfully", states));
+    }
+
+    @GetMapping("/tenant/{tenantId}/search")
+    @Operation(summary = "Search states by tenant ID")
+    public ResponseEntity<ApiResponse<List<State>>> searchStates(
+            @PathVariable String tenantId,
+            @RequestParam(required = false) String searchTerm) {
+        List<State> states = stateService.searchStates(tenantId, searchTerm);
+        return ResponseEntity.ok(ApiResponse.success("States search completed successfully", states));
+    }
+
     @GetMapping("/active")
     @Operation(summary = "Get all active states")
     public ResponseEntity<ApiResponse<List<State>>> getActiveStates() {
         List<State> states = stateService.getActiveStates();
         return ResponseEntity.ok(ApiResponse.success("Active states fetched successfully", states));
+    }
+
+    @GetMapping("/country/{countryId}")
+    @Operation(summary = "Get states by country ID")
+    public ResponseEntity<ApiResponse<List<State>>> getStatesByCountry(@PathVariable Long countryId) {
+        List<State> states = stateService.getStatesByCountry(countryId);
+        return ResponseEntity.ok(ApiResponse.success("States fetched successfully", states));
+    }
+
+    @GetMapping("/tenant/{tenantId}/country/{countryId}")
+    @Operation(summary = "Get states by tenant ID and country ID")
+    public ResponseEntity<ApiResponse<List<State>>> getStatesByTenantAndCountry(
+            @PathVariable String tenantId,
+            @PathVariable Long countryId) {
+        List<State> states = stateService.getStatesByTenantAndCountry(tenantId, countryId);
+        return ResponseEntity.ok(ApiResponse.success("States fetched successfully", states));
     }
 
     @PostMapping

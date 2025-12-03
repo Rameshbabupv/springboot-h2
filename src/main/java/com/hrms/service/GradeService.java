@@ -16,7 +16,11 @@ public interface GradeService {
 
     List<Grade> getGradesByTenant(String tenantId);
 
+    List<Grade> getActiveGradesByTenant(String tenantId);
+
     List<Grade> getActiveGrades();
+
+    List<Grade> searchGrades(String tenantId, String searchTerm);
 
     Grade createGrade(GradeRequest request);
 

@@ -8,5 +8,8 @@ public class JobFunctionInput {
     private String name;
     private String code;
     private String description;
+    private String functionGroup;
     private Boolean isActive = true;
+    private String createdBy;
+    private String updatedBy;
 }

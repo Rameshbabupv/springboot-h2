@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service implementation for Department operations.
+ * Service implementation for Department operations with comprehensive validation.
  */
 @Slf4j
 @Service
@@ -45,9 +45,24 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    public List<Department> getActiveDepartmentsByTenant(String tenantId) {
+        log.debug("Fetching active departments for tenant: {}", tenantId);
+        return departmentRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<Department> getActiveDepartments() {
         log.debug("Fetching active departments");
         return departmentRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<Department> searchDepartments(String tenantId, String searchTerm) {
+        log.debug("Searching departments for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveDepartmentsByTenant(tenantId);
+        }
+        return departmentRepository.searchDepartments(tenantId, searchTerm.trim());
     }
 
     @Override
@@ -55,17 +70,28 @@ public class DepartmentServiceImpl implements DepartmentService {
     public Department createDepartment(DepartmentRequest request) {
         log.debug("Creating new department: {}", request.getName());
 
-        // Check for duplicate code within tenant
-        Optional<Department> existing = departmentRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<Department> existingCode = departmentRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("Department", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<Department> existingName = departmentRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("Department", "name", request.getName());
         }
 
         Department department = mapToEntity(request);
         Department saved = departmentRepository.save(department);
 
-        log.info("Created department with id: {}", saved.getId());
+        log.info("Created department with id: {} for tenant: {}", saved.getId(), saved.getTenantId());
         return saved;
     }
 
@@ -76,17 +102,28 @@ public class DepartmentServiceImpl implements DepartmentService {
 
         Department existing = getDepartmentById(id);
 
-        // Check for duplicate code within tenant (exclude current entity)
-        Optional<Department> duplicate = departmentRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code (excluding current record)
+        Optional<Department> duplicateCode = departmentRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("Department", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name (excluding current record)
+        Optional<Department> duplicateName = departmentRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("Department", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
         Department updated = departmentRepository.save(existing);
 
-        log.info("Updated department with id: {}", id);
+        log.info("Updated department with id: {} for tenant: {}", id, updated.getTenantId());
         return updated;
     }
 
@@ -115,6 +152,8 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setCode(request.getCode());
         department.setDescription(request.getDescription());
         department.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        department.setCreatedBy(request.getCreatedBy());
+        department.setUpdatedBy(request.getUpdatedBy());
         return department;
     }
 
@@ -126,5 +165,6 @@ public class DepartmentServiceImpl implements DepartmentService {
         if (request.getIsActive() != null) {
             department.setIsActive(request.getIsActive());
         }
+        department.setUpdatedBy(request.getUpdatedBy());
     }
 }

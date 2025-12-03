@@ -1,9 +1,11 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.request.EmploymentTypeRequest;
 import com.hrms.entity.EmploymentType;
 import com.hrms.graphql.input.EmploymentTypeInput;
-import com.hrms.repository.EmploymentTypeRepository;
+import com.hrms.service.EmploymentTypeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -11,67 +13,63 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class EmploymentTypeResolver {
 
-    private final EmploymentTypeRepository employmentTypeRepository;
+    private final EmploymentTypeService employmentTypeService;
 
     @QueryMapping
     public List<EmploymentType> employmentTypes() {
-        return employmentTypeRepository.findAll();
+        return employmentTypeService.getAllEmploymentTypes();
     }
 
     @QueryMapping
     public EmploymentType employmentType(@Argument Long id) {
-        return employmentTypeRepository.findById(id).orElse(null);
+        return employmentTypeService.getEmploymentTypeById(id);
     }
 
     @QueryMapping
     public List<EmploymentType> employmentTypesByTenant(@Argument String tenantId) {
-        return employmentTypeRepository.findByTenantId(tenantId);
+        return employmentTypeService.getEmploymentTypesByTenant(tenantId);
     }
 
     @QueryMapping
     public List<EmploymentType> activeEmploymentTypes() {
-        return employmentTypeRepository.findByIsActiveTrue();
+        return employmentTypeService.getActiveEmploymentTypes();
+    }
+
+    @QueryMapping
+    public List<EmploymentType> searchEmploymentTypes(@Argument String tenantId, @Argument String searchTerm) {
+        return employmentTypeService.searchEmploymentTypes(tenantId, searchTerm);
     }
 
     @MutationMapping
     public EmploymentType createEmploymentType(@Argument EmploymentTypeInput input) {
-        EmploymentType employmentType = mapToEntity(input);
-        return employmentTypeRepository.save(employmentType);
+        EmploymentTypeRequest request = mapToRequest(input);
+        return employmentTypeService.createEmploymentType(request);
     }
 
     @MutationMapping
     public EmploymentType updateEmploymentType(@Argument Long id, @Argument EmploymentTypeInput input) {
-        EmploymentType employmentType = employmentTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("EmploymentType not found"));
-
-        updateEntityFromInput(employmentType, input);
-        return employmentTypeRepository.save(employmentType);
+        EmploymentTypeRequest request = mapToRequest(input);
+        return employmentTypeService.updateEmploymentType(id, request);
     }
 
     @MutationMapping
     public Boolean deleteEmploymentType(@Argument Long id) {
-        if (employmentTypeRepository.existsById(id)) {
-            employmentTypeRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        employmentTypeService.deleteEmploymentType(id);
+        return true;
     }
 
-    private EmploymentType mapToEntity(EmploymentTypeInput input) {
-        EmploymentType employmentType = new EmploymentType();
-        updateEntityFromInput(employmentType, input);
-        return employmentType;
-    }
-
-    private void updateEntityFromInput(EmploymentType employmentType, EmploymentTypeInput input) {
-        employmentType.setTenantId(input.getTenantId());
-        employmentType.setName(input.getName());
-        employmentType.setCode(input.getCode());
-        employmentType.setDescription(input.getDescription());
-        employmentType.setIsActive(input.getIsActive());
+    private EmploymentTypeRequest mapToRequest(EmploymentTypeInput input) {
+        return EmploymentTypeRequest.builder()
+                .tenantId(input.getTenantId())
+                .name(input.getName())
+                .code(input.getCode())
+                .description(input.getDescription())
+                .isActive(input.getIsActive())
+                .build();
     }
 }

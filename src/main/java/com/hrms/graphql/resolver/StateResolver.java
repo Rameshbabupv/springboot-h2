@@ -1,9 +1,11 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.request.StateRequest;
 import com.hrms.entity.State;
 import com.hrms.graphql.input.StateInput;
-import com.hrms.repository.StateRepository;
+import com.hrms.service.StateService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -11,67 +13,83 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class StateResolver {
 
-    private final StateRepository stateRepository;
+    private final StateService stateService;
 
     @QueryMapping
     public List<State> states() {
-        return stateRepository.findAll();
+        return stateService.getAllStates();
     }
 
     @QueryMapping
     public State state(@Argument Long id) {
-        return stateRepository.findById(id).orElse(null);
+        return stateService.getStateById(id);
     }
 
     @QueryMapping
     public List<State> statesByTenant(@Argument String tenantId) {
-        return stateRepository.findByTenantId(tenantId);
+        return stateService.getStatesByTenant(tenantId);
+    }
+
+    @QueryMapping
+    public List<State> activeStatesByTenant(@Argument String tenantId) {
+        return stateService.getActiveStatesByTenant(tenantId);
     }
 
     @QueryMapping
     public List<State> activeStates() {
-        return stateRepository.findByIsActiveTrue();
+        return stateService.getActiveStates();
+    }
+
+    @QueryMapping
+    public List<State> statesByCountry(@Argument Long countryId) {
+        return stateService.getStatesByCountry(countryId);
+    }
+
+    @QueryMapping
+    public List<State> statesByTenantAndCountry(@Argument String tenantId, @Argument Long countryId) {
+        return stateService.getStatesByTenantAndCountry(tenantId, countryId);
+    }
+
+    @QueryMapping
+    public List<State> searchStates(@Argument String tenantId, @Argument String searchTerm) {
+        return stateService.searchStates(tenantId, searchTerm);
     }
 
     @MutationMapping
     public State createState(@Argument StateInput input) {
-        State state = mapToEntity(input);
-        return stateRepository.save(state);
+        StateRequest request = mapToRequest(input);
+        return stateService.createState(request);
     }
 
     @MutationMapping
     public State updateState(@Argument Long id, @Argument StateInput input) {
-        State state = stateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("State not found"));
-
-        updateEntityFromInput(state, input);
-        return stateRepository.save(state);
+        StateRequest request = mapToRequest(input);
+        return stateService.updateState(id, request);
     }
 
     @MutationMapping
     public Boolean deleteState(@Argument Long id) {
-        if (stateRepository.existsById(id)) {
-            stateRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        stateService.deleteState(id);
+        return true;
     }
 
-    private State mapToEntity(StateInput input) {
-        State state = new State();
-        updateEntityFromInput(state, input);
-        return state;
-    }
-
-    private void updateEntityFromInput(State state, StateInput input) {
-        state.setTenantId(input.getTenantId());
-        state.setName(input.getName());
-        state.setCode(input.getCode());
-        state.setDescription(input.getDescription());
-        state.setIsActive(input.getIsActive());
+    private StateRequest mapToRequest(StateInput input) {
+        return StateRequest.builder()
+                .tenantId(input.getTenantId())
+                .countryId(input.getCountryId())
+                .name(input.getName())
+                .code(input.getCode())
+                .stateCode(input.getStateCode())
+                .isUnionTerritory(input.getIsUnionTerritory())
+                .description(input.getDescription())
+                .isActive(input.getIsActive())
+                .createdBy(input.getCreatedBy())
+                .updatedBy(input.getUpdatedBy())
+                .build();
     }
 }

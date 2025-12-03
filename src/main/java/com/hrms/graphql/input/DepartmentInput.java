@@ -9,4 +9,6 @@ public class DepartmentInput {
     private String code;
     private String description;
     private Boolean isActive = true;
+    private String createdBy;
+    private String updatedBy;
 }

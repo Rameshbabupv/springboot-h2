@@ -45,9 +45,24 @@ public class GradeServiceImpl implements GradeService {
     }
 
     @Override
+    public List<Grade> getActiveGradesByTenant(String tenantId) {
+        log.debug("Fetching active grades for tenant: {}", tenantId);
+        return gradeRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<Grade> getActiveGrades() {
         log.debug("Fetching active grades");
         return gradeRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<Grade> searchGrades(String tenantId, String searchTerm) {
+        log.debug("Searching grades for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveGradesByTenant(tenantId);
+        }
+        return gradeRepository.searchGrades(tenantId, searchTerm);
     }
 
     @Override
@@ -55,10 +70,22 @@ public class GradeServiceImpl implements GradeService {
     public Grade createGrade(GradeRequest request) {
         log.debug("Creating new grade: {}", request.getName());
 
-        Optional<Grade> existing = gradeRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<Grade> existingCode = gradeRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("Grade", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<Grade> existingName = gradeRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("Grade", "name", request.getName());
         }
 
         Grade grade = mapToEntity(request);
@@ -75,10 +102,22 @@ public class GradeServiceImpl implements GradeService {
 
         Grade existing = getGradeById(id);
 
-        Optional<Grade> duplicate = gradeRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<Grade> duplicateCode = gradeRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("Grade", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<Grade> duplicateName = gradeRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("Grade", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
@@ -111,11 +150,9 @@ public class GradeServiceImpl implements GradeService {
         grade.setTenantId(request.getTenantId());
         grade.setName(request.getName());
         grade.setCode(request.getCode());
-        grade.setLevel(request.getLevel());
-        grade.setMinSalary(request.getMinSalary());
-        grade.setMaxSalary(request.getMaxSalary());
         grade.setDescription(request.getDescription());
         grade.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        grade.setCreatedBy(request.getCreatedBy());
         return grade;
     }
 
@@ -123,12 +160,10 @@ public class GradeServiceImpl implements GradeService {
         grade.setTenantId(request.getTenantId());
         grade.setName(request.getName());
         grade.setCode(request.getCode());
-        grade.setLevel(request.getLevel());
-        grade.setMinSalary(request.getMinSalary());
-        grade.setMaxSalary(request.getMaxSalary());
         grade.setDescription(request.getDescription());
         if (request.getIsActive() != null) {
             grade.setIsActive(request.getIsActive());
         }
+        grade.setUpdatedBy(request.getUpdatedBy());
     }
 }

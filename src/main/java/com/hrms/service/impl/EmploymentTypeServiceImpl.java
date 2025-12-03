@@ -45,9 +45,24 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
     }
 
     @Override
+    public List<EmploymentType> getActiveEmploymentTypesByTenant(String tenantId) {
+        log.debug("Fetching active employment types for tenant: {}", tenantId);
+        return employmentTypeRepository.findByTenantIdAndIsActiveTrue(tenantId);
+    }
+
+    @Override
     public List<EmploymentType> getActiveEmploymentTypes() {
         log.debug("Fetching active employment types");
         return employmentTypeRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public List<EmploymentType> searchEmploymentTypes(String tenantId, String searchTerm) {
+        log.debug("Searching employment types for tenant: {} with term: {}", tenantId, searchTerm);
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getActiveEmploymentTypesByTenant(tenantId);
+        }
+        return employmentTypeRepository.searchEmploymentTypes(tenantId, searchTerm);
     }
 
     @Override
@@ -55,10 +70,22 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
     public EmploymentType createEmploymentType(EmploymentTypeRequest request) {
         log.debug("Creating new employment type: {}", request.getName());
 
-        Optional<EmploymentType> existing = employmentTypeRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (existing.isPresent()) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<EmploymentType> existingCode = employmentTypeRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (existingCode.isPresent()) {
             throw new DuplicateResourceException("EmploymentType", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<EmploymentType> existingName = employmentTypeRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (existingName.isPresent()) {
+            throw new DuplicateResourceException("EmploymentType", "name", request.getName());
         }
 
         EmploymentType employmentType = mapToEntity(request);
@@ -75,10 +102,22 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
 
         EmploymentType existing = getEmploymentTypeById(id);
 
-        Optional<EmploymentType> duplicate = employmentTypeRepository
-                .findByTenantIdAndCode(request.getTenantId(), request.getCode());
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+        // Auto-convert code to uppercase
+        String upperCode = request.getCode().toUpperCase();
+        request.setCode(upperCode);
+
+        // Case-insensitive duplicate check for code
+        Optional<EmploymentType> duplicateCode = employmentTypeRepository
+                .findByTenantIdAndCodeIgnoreCase(request.getTenantId(), request.getCode());
+        if (duplicateCode.isPresent() && !duplicateCode.get().getId().equals(id)) {
             throw new DuplicateResourceException("EmploymentType", "code", request.getCode());
+        }
+
+        // Case-insensitive duplicate check for name
+        Optional<EmploymentType> duplicateName = employmentTypeRepository
+                .findByTenantIdAndNameIgnoreCase(request.getTenantId(), request.getName());
+        if (duplicateName.isPresent() && !duplicateName.get().getId().equals(id)) {
+            throw new DuplicateResourceException("EmploymentType", "name", request.getName());
         }
 
         updateEntityFromRequest(existing, request);
@@ -113,6 +152,7 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
         employmentType.setCode(request.getCode());
         employmentType.setDescription(request.getDescription());
         employmentType.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        employmentType.setCreatedBy(request.getCreatedBy());
         return employmentType;
     }
 
@@ -124,5 +164,6 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
         if (request.getIsActive() != null) {
             employmentType.setIsActive(request.getIsActive());
         }
+        employmentType.setUpdatedBy(request.getUpdatedBy());
     }
 }
