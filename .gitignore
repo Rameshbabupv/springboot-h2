@@ -55,7 +55,6 @@ ehthumbs.db
 Thumbs.db
 
 # Spring Boot
-*.log
 spring.log
 application-local.properties
 
@@ -73,7 +72,6 @@ build/
 
 # Test reports
 test-output/
-*.log
 
 # Package Files
 *.zip
@@ -82,3 +80,8 @@ test-output/
 
 # JEnv
 .java-version
+
+# Environment files
+.env
+.env.local
+*.properties.local
