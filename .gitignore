@@ -1,0 +1,40 @@
+# Build and compiled files
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Maven
+.m2/
+
+# Serena
+.serena/
+
+# Environment files
+.env
+.env.local
+*.properties.local
