@@ -38,43 +38,57 @@ public class UserAccountResolver {
     @QueryMapping
     public List<UserAccountResponse> userAccounts(@Argument String tenantId) {
         log.debug("GraphQL Query: userAccounts - tenantId: {}", tenantId);
-        return userAccountService.getUsersByTenant(tenantId);
+        List<UserAccountResponse> result = userAccountService.getUsersByTenant(tenantId);
+        log.info("GraphQL Response: userAccounts - returned {} user accounts for tenant: {}", result.size(), tenantId);
+        return result;
     }
 
     @QueryMapping
     public UserAccountResponse userAccount(@Argument String id) {
         log.debug("GraphQL Query: userAccount - id: {}", id);
-        return userAccountService.getUserById(Long.parseLong(id));
+        UserAccountResponse result = userAccountService.getUserById(Long.parseLong(id));
+        log.info("GraphQL Response: userAccount - returned user: {}", result.getUsername());
+        return result;
     }
 
     @QueryMapping
     public UserAccountResponse userAccountByUsername(@Argument String tenantId, @Argument String username) {
         log.debug("GraphQL Query: userAccountByUsername - tenantId: {}, username: {}", tenantId, username);
-        return userAccountService.getUserByUsername(tenantId, username);
+        UserAccountResponse result = userAccountService.getUserByUsername(tenantId, username);
+        log.info("GraphQL Response: userAccountByUsername - returned user: {}", result.getUsername());
+        return result;
     }
 
     @QueryMapping
     public UserAccountResponse userAccountByEmployeeId(@Argument String employeeId) {
         log.debug("GraphQL Query: userAccountByEmployeeId - employeeId: {}", employeeId);
-        return userAccountService.getUserByEmployeeId(Long.parseLong(employeeId));
+        UserAccountResponse result = userAccountService.getUserByEmployeeId(Long.parseLong(employeeId));
+        log.info("GraphQL Response: userAccountByEmployeeId - returned user: {}", result.getUsername());
+        return result;
     }
 
     @QueryMapping
     public List<UserAccountResponse> userAccountsByRole(@Argument String tenantId, @Argument String role) {
         log.debug("GraphQL Query: userAccountsByRole - tenantId: {}, role: {}", tenantId, role);
-        return userAccountService.getUsersByRole(tenantId, role);
+        List<UserAccountResponse> result = userAccountService.getUsersByRole(tenantId, role);
+        log.info("GraphQL Response: userAccountsByRole - returned {} users with role: {}", result.size(), role);
+        return result;
     }
 
     @QueryMapping
     public List<UserAccountResponse> activeUserAccounts(@Argument String tenantId) {
         log.debug("GraphQL Query: activeUserAccounts - tenantId: {}", tenantId);
-        return userAccountService.getActiveUsers(tenantId);
+        List<UserAccountResponse> result = userAccountService.getActiveUsers(tenantId);
+        log.info("GraphQL Response: activeUserAccounts - returned {} active users", result.size());
+        return result;
     }
 
     @QueryMapping
     public Boolean isUsernameAvailable(@Argument String tenantId, @Argument String username) {
         log.debug("GraphQL Query: isUsernameAvailable - tenantId: {}, username: {}", tenantId, username);
-        return userAccountService.isUsernameAvailable(tenantId, username);
+        Boolean result = userAccountService.isUsernameAvailable(tenantId, username);
+        log.info("GraphQL Response: isUsernameAvailable - username '{}' available: {}", username, result);
+        return result;
     }
 
     // =====================================================

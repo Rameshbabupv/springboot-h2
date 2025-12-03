@@ -1,7 +1,9 @@
 package com.hrms.service;
 
+import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeeResponse;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -87,4 +89,35 @@ public interface EmployeeService {
      * Check if employee exists by empId (tenant-aware)
      */
     boolean existsByEmpId(String tenantId, String empId);
+
+    // =====================================================
+    // NEW: Advanced Filtering with Organizational Scope
+    // =====================================================
+
+    /**
+     * Get filtered employees with pagination
+     * Supports all 9 organizational filters + search + status
+     *
+     * @param criteria Filter criteria with all parameters
+     * @return Page of employee responses
+     */
+    Page<EmployeeResponse> getFilteredEmployees(EmployeeFilterCriteria criteria);
+
+    /**
+     * Count employees matching filter criteria
+     * Used for pagination and reporting
+     *
+     * @param criteria Filter criteria
+     * @return Count of matching employees
+     */
+    long countFilteredEmployees(EmployeeFilterCriteria criteria);
+
+    /**
+     * Get filtered employees as list (without pagination)
+     * Used when you need all matching records
+     *
+     * @param criteria Filter criteria
+     * @return List of employee responses
+     */
+    List<EmployeeResponse> getFilteredEmployeesList(EmployeeFilterCriteria criteria);
 }

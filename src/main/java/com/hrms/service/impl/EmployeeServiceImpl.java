@@ -1,5 +1,6 @@
 package com.hrms.service.impl;
 
+import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeeResponse;
 import com.hrms.entity.*;
@@ -8,11 +9,19 @@ import com.hrms.exception.ValidationException;
 import com.hrms.mapper.EmployeeMapper;
 import com.hrms.repository.*;
 import com.hrms.service.EmployeeService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +37,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
-    
+    private final EntityManager entityManager;
+
     // Master repositories for required relationships
     private final CompanyRepository companyRepository;
     private final CompanyLocationRepository companyLocationRepository;
@@ -36,7 +46,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final DesignationRepository designationRepository;
     private final JobFunctionRepository jobFunctionRepository;
     private final EmploymentTypeRepository employmentTypeRepository;
-    
+
     // Optional relationship repositories
     private final DivisionRepository divisionRepository;
     private final SectionRepository sectionRepository;
@@ -352,5 +362,208 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .orElseThrow(() -> new ResourceNotFoundException("City", "id", request.getCityId()));
             employee.setCity(city);
         }
+    }
+
+    // =====================================================
+    // NEW: ADVANCED FILTERING WITH ORGANIZATIONAL SCOPE
+    // =====================================================
+
+    @Override
+    public Page<EmployeeResponse> getFilteredEmployees(EmployeeFilterCriteria criteria) {
+        log.debug("Fetching filtered employees for tenant: {}", criteria.getTenantId());
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Employee> query = cb.createQuery(Employee.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build WHERE clause with all filters
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.where(predicates.toArray(new Predicate[0]));
+
+        // Apply sorting
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isEmpty()) {
+            if ("DESC".equalsIgnoreCase(criteria.getSortDirection())) {
+                query.orderBy(cb.desc(root.get(criteria.getSortBy())));
+            } else {
+                query.orderBy(cb.asc(root.get(criteria.getSortBy())));
+            }
+        } else {
+            query.orderBy(cb.desc(root.get("id"))); // Default sort by ID desc
+        }
+
+        // Execute query with pagination
+        TypedQuery<Employee> typedQuery = entityManager.createQuery(query);
+
+        int page = criteria.getPage() != null ? criteria.getPage() : 0;
+        int size = criteria.getSize() != null ? criteria.getSize() : 20;
+
+        typedQuery.setFirstResult(page * size);
+        typedQuery.setMaxResults(size);
+
+        List<Employee> employees = typedQuery.getResultList();
+        long total = countFilteredEmployees(criteria);
+
+        // Convert to responses
+        List<EmployeeResponse> responses = employees.stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+
+        PageRequest pageRequest = PageRequest.of(page, size);
+        return new PageImpl<>(responses, pageRequest, total);
+    }
+
+    @Override
+    public long countFilteredEmployees(EmployeeFilterCriteria criteria) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build same WHERE clause
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.select(cb.count(root));
+        query.where(predicates.toArray(new Predicate[0]));
+
+        return entityManager.createQuery(query).getSingleResult();
+    }
+
+    @Override
+    public List<EmployeeResponse> getFilteredEmployeesList(EmployeeFilterCriteria criteria) {
+        log.debug("Fetching filtered employees list for tenant: {}", criteria.getTenantId());
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Employee> query = cb.createQuery(Employee.class);
+        Root<Employee> root = query.from(Employee.class);
+
+        // Build WHERE clause
+        List<Predicate> predicates = buildPredicates(cb, root, criteria);
+        query.where(predicates.toArray(new Predicate[0]));
+
+        // Apply sorting
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isEmpty()) {
+            if ("DESC".equalsIgnoreCase(criteria.getSortDirection())) {
+                query.orderBy(cb.desc(root.get(criteria.getSortBy())));
+            } else {
+                query.orderBy(cb.asc(root.get(criteria.getSortBy())));
+            }
+        }
+
+        List<Employee> employees = entityManager.createQuery(query).getResultList();
+
+        return employees.stream()
+                .map(employeeMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Build predicates for filtering
+     * Supports all 9 organizational parameters + search + status
+     */
+    private List<Predicate> buildPredicates(CriteriaBuilder cb, Root<Employee> root, EmployeeFilterCriteria criteria) {
+        List<Predicate> predicates = new ArrayList<>();
+
+        // REQUIRED: Tenant filter
+        if (criteria.getTenantId() != null) {
+            predicates.add(cb.equal(root.get("tenantId"), criteria.getTenantId()));
+        }
+
+        // 1. Company filter
+        if (criteria.hasCompanyFilter()) {
+            predicates.add(root.get("company").get("id").in(criteria.getCompanyIds()));
+        }
+
+        // 2. Location filter with company-location relationship validation
+        if (criteria.hasLocationFilter()) {
+            // Employee's location must be in the allowed location IDs
+            Predicate locationInScope = root.get("location").get("id").in(criteria.getLocationIds());
+
+            // AND the employee's location must belong to the employee's company
+            // This prevents invalid combinations like:
+            // - Employee with Company 2 + Location 2 (when Location 2 belongs to Company 1)
+            Predicate locationBelongsToCompany = cb.equal(
+                root.get("location").get("company").get("id"),
+                root.get("company").get("id")
+            );
+
+            predicates.add(cb.and(locationInScope, locationBelongsToCompany));
+        }
+
+        // 3. Division filter
+        // Include employees with NULL division (not assigned) - they match any filter
+        if (criteria.hasDivisionFilter()) {
+            Predicate divisionIn = root.get("division").get("id").in(criteria.getDivisionIds());
+            Predicate divisionIsNull = cb.isNull(root.get("division"));
+            predicates.add(cb.or(divisionIn, divisionIsNull));
+        }
+
+        // 4. Department filter
+        // Include employees with NULL department (not assigned) - they match any filter
+        if (criteria.hasDepartmentFilter()) {
+            Predicate departmentIn = root.get("department").get("id").in(criteria.getDepartmentIds());
+            Predicate departmentIsNull = cb.isNull(root.get("department"));
+            predicates.add(cb.or(departmentIn, departmentIsNull));
+        }
+
+        // 5. Section filter
+        // Include employees with NULL section (not assigned) - they match any filter
+        if (criteria.hasSectionFilter()) {
+            Predicate sectionIn = root.get("section").get("id").in(criteria.getSectionIds());
+            Predicate sectionIsNull = cb.isNull(root.get("section"));
+            predicates.add(cb.or(sectionIn, sectionIsNull));
+        }
+
+        // 6. Designation filter
+        // Include employees with NULL designation (not assigned) - they match any filter
+        if (criteria.hasDesignationFilter()) {
+            Predicate designationIn = root.get("designation").get("id").in(criteria.getDesignationIds());
+            Predicate designationIsNull = cb.isNull(root.get("designation"));
+            predicates.add(cb.or(designationIn, designationIsNull));
+        }
+
+        // 7. Grade filter
+        // Include employees with NULL grade (not assigned) - they match any filter
+        if (criteria.hasGradeFilter()) {
+            Predicate gradeIn = root.get("grade").get("id").in(criteria.getGradeIds());
+            Predicate gradeIsNull = cb.isNull(root.get("grade"));
+            predicates.add(cb.or(gradeIn, gradeIsNull));
+        }
+
+        // 8. Job Function filter
+        // Include employees with NULL job function (not assigned) - they match any filter
+        if (criteria.hasJobFunctionFilter()) {
+            Predicate jobFunctionIn = root.get("jobFunction").get("id").in(criteria.getJobFunctionIds());
+            Predicate jobFunctionIsNull = cb.isNull(root.get("jobFunction"));
+            predicates.add(cb.or(jobFunctionIn, jobFunctionIsNull));
+        }
+
+        // 9. Employment Type filter
+        // Include employees with NULL employment type (not assigned) - they match any filter
+        if (criteria.hasEmploymentTypeFilter()) {
+            Predicate employmentTypeIn = root.get("employmentType").get("id").in(criteria.getEmploymentTypeIds());
+            Predicate employmentTypeIsNull = cb.isNull(root.get("employmentType"));
+            predicates.add(cb.or(employmentTypeIn, employmentTypeIsNull));
+        }
+
+        // Additional filters
+
+        // Search query (employee name, emp_id, email)
+        if (criteria.hasSearchQuery()) {
+            String searchPattern = "%" + criteria.getSearchQuery().toLowerCase() + "%";
+            Predicate namePredicate = cb.like(cb.lower(root.get("employeeName")), searchPattern);
+            Predicate empIdPredicate = cb.like(cb.lower(root.get("empId")), searchPattern);
+            Predicate emailPredicate = cb.like(cb.lower(root.get("emailId")), searchPattern);
+            predicates.add(cb.or(namePredicate, empIdPredicate, emailPredicate));
+        }
+
+        // Employee status filter
+        if (criteria.hasEmployeeStatusFilter()) {
+            predicates.add(cb.equal(root.get("employeeStatus"), criteria.getEmployeeStatus()));
+        }
+
+        // Reporting manager filter
+        if (criteria.hasReportingManagerFilter()) {
+            predicates.add(cb.equal(root.get("reportingManager").get("id"), criteria.getReportingManagerId()));
+        }
+
+        return predicates;
     }
 }

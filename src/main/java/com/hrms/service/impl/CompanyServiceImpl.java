@@ -33,14 +33,18 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public List<Company> getAllCompanies() {
         log.debug("Fetching all companies");
-        return companyRepository.findAll();
+        List<Company> result = companyRepository.findAll();
+        log.info("Service Response: getAllCompanies - returned {} companies", result.size());
+        return result;
     }
 
     @Override
     public Company getCompanyById(Long id) {
         log.debug("Fetching company with id: {}", id);
-        return companyRepository.findById(id)
+        Company result = companyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Company", "id", id));
+        log.info("Service Response: getCompanyById - returned company: {} ({})", result.getName(), result.getCode());
+        return result;
     }
 
     @Override
@@ -53,13 +57,17 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public List<Company> getCompaniesByTenant(String tenantId) {
         log.debug("Fetching companies for tenant: {}", tenantId);
-        return companyRepository.findByTenantId(tenantId);
+        List<Company> result = companyRepository.findByTenantId(tenantId);
+        log.info("Service Response: getCompaniesByTenant - returned {} companies for tenant: {}", result.size(), tenantId);
+        return result;
     }
 
     @Override
     public List<Company> getActiveCompanies() {
         log.debug("Fetching active companies");
-        return companyRepository.findByIsActiveTrue();
+        List<Company> result = companyRepository.findByIsActiveTrue();
+        log.info("Service Response: getActiveCompanies - returned {} active companies", result.size());
+        return result;
     }
 
     @Override

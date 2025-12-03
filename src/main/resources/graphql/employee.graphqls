@@ -16,6 +16,45 @@ extend type Query {
     searchEmployees(tenantId: String!, searchTerm: String!): [Employee!]!
     employeeCount(tenantId: String!): Int!
     employeeCountByStatus(tenantId: String!, status: String!): Int!
+
+    # NEW: Advanced filtered employee queries with organizational scope
+    filteredEmployees(
+        tenantId: String!
+        userId: ID!
+        companyIds: [ID!]
+        locationIds: [ID!]
+        divisionIds: [ID!]
+        departmentIds: [ID!]
+        sectionIds: [ID!]
+        designationIds: [ID!]
+        gradeIds: [ID!]
+        jobFunctionIds: [ID!]
+        employmentTypeIds: [ID!]
+        searchQuery: String
+        employeeStatus: String
+        reportingManagerId: ID
+        page: Int
+        size: Int
+        sortBy: String
+        sortDirection: String
+    ): EmployeePageResponse!
+
+    filteredEmployeesCount(
+        tenantId: String!
+        userId: ID!
+        companyIds: [ID!]
+        locationIds: [ID!]
+        divisionIds: [ID!]
+        departmentIds: [ID!]
+        sectionIds: [ID!]
+        designationIds: [ID!]
+        gradeIds: [ID!]
+        jobFunctionIds: [ID!]
+        employmentTypeIds: [ID!]
+        searchQuery: String
+        employeeStatus: String
+        reportingManagerId: ID
+    ): Int!
 }
 
 extend type Mutation {
@@ -240,4 +279,18 @@ input EmployeeInput {
     # Audit Fields
     createdBy: ID
     updatedBy: ID
+}
+
+# =====================================================
+# NEW: Pagination Response Types
+# =====================================================
+
+type EmployeePageResponse {
+    content: [Employee!]!
+    totalElements: Int!
+    totalPages: Int!
+    currentPage: Int!
+    pageSize: Int!
+    hasNext: Boolean!
+    hasPrevious: Boolean!
 }
