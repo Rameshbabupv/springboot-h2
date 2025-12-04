@@ -310,6 +310,11 @@ public class Employee {
     private Long employeeBatchId;
     // Note: Will add @ManyToOne relationship when Batch entity is created
 
+    // Leave Policy Assignment
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leave_policy_id")
+    private LeavePolicy leavePolicy;
+
     @Column(name = "comp_off")
     private Boolean compOff = false;
 
