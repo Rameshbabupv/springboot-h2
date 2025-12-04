@@ -97,4 +97,14 @@ public interface LeavePolicyRepository extends JpaRepository<LeavePolicy, Long> 
     boolean existsByTenantAndCompanyAndCode(@Param("tenantId") String tenantId,
                                              @Param("companyId") Long companyId,
                                              @Param("code") String code);
+
+    /**
+     * Clear all default flags for tenant+company.
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE LeavePolicy lp SET lp.isDefault = false WHERE lp.tenantId = :tenantId " +
+           "AND ((:companyId IS NULL AND lp.company IS NULL) OR lp.company.id = :companyId) " +
+           "AND lp.isDefault = true")
+    void clearDefaultsForTenantAndCompany(@Param("tenantId") String tenantId,
+                                           @Param("companyId") Long companyId);
 }

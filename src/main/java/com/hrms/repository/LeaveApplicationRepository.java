@@ -142,7 +142,7 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
     @Query("SELECT COUNT(la) + 1 FROM LeaveApplication la " +
            "WHERE la.tenantId = :tenantId " +
            "AND la.company.id = :companyId " +
-           "AND la.applicationNumber LIKE :prefix%")
+           "AND la.applicationNumber LIKE CONCAT(:prefix, '%')")
     Long getNextSequence(@Param("tenantId") String tenantId,
                           @Param("companyId") Long companyId,
                           @Param("prefix") String prefix);
