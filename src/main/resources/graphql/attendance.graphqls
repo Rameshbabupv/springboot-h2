@@ -1,0 +1,474 @@
+# =====================================================
+# ATTENDANCE MODULE GRAPHQL SCHEMA
+# =====================================================
+# Types, Inputs, Queries, Mutations, and Enums for
+# the Attendance Module (Shifts, Holidays, Policies,
+# Punch Logs, Daily Attendance, Regularizations)
+# =====================================================
+
+# ====================
+# TYPES
+# ====================
+
+# Shift - Work shift definition
+type Shift {
+  id: ID!
+  tenantId: ID!
+  companyId: ID
+  code: String!
+  name: String!
+  description: String
+  shiftType: ShiftType!
+  timingMode: TimingMode!
+  startTime: String!
+  endTime: String!
+  workingHours: Float!
+  breakDurationMinutes: Int
+  isNightShift: Boolean
+  isOtEligible: Boolean
+  firstHalfEnd: String
+  secondHalfStart: String
+  isActive: Boolean
+  displayOrder: Int
+  breaks: [ShiftBreak]
+}
+
+# ShiftBreak - Break periods within a shift
+type ShiftBreak {
+  id: ID!
+  shiftId: ID!
+  breakType: BreakType!
+  name: String
+  startTime: String!
+  endTime: String!
+  durationMinutes: Int!
+  isPaid: Boolean
+}
+
+# Holiday - Company holidays
+type Holiday {
+  id: ID!
+  tenantId: ID!
+  date: String!
+  name: String!
+  holidayType: String!
+  category: HolidayCategory!
+  isMandatory: Boolean
+  isNiActCompliant: Boolean
+  isFloating: Boolean
+  religion: Religion
+  description: String
+  companies: [ID]
+  locations: [ID]
+}
+
+# AttendancePolicyTemplate - Attendance rules and criteria
+type AttendancePolicyTemplate {
+  id: ID!
+  tenantId: ID!
+  companyId: ID
+  templateCode: String!
+  templateName: String!
+  description: String
+  isDefault: Boolean
+  isActive: Boolean
+  priority: Int
+  version: String
+  effectiveFrom: String!
+  effectiveTo: String
+  criteria: JSON
+  applicableShifts: [Shift]
+  weekoffRules: [WeekoffRule]
+  incentives: [PolicyIncentive]
+  treatAbsenceAsLeave: Boolean
+  markHolidays: Boolean
+  markWeekoffs: Boolean
+  minHoursForPresent: Float
+  minHoursForHalfDay: Float
+  graceInMinutes: Int
+  graceOutMinutes: Int
+  firstHalfEnd: String
+  secondHalfStart: String
+  isOtEligible: Boolean
+  hasIncentives: Boolean
+}
+
+# WeekoffRule - Weekly off patterns
+type WeekoffRule {
+  id: ID!
+  dayOfWeek: WeekDay!
+  pattern: WeekoffPattern!
+}
+
+# PolicyIncentive - Attendance-based incentives
+type PolicyIncentive {
+  id: ID!
+  payheadCode: String!
+  calcType: IncentiveCalcType!
+  overrideValue: Float
+  isActive: Boolean
+}
+
+# PunchLog - Raw punch records
+type PunchLog {
+  id: ID!
+  tenantId: ID!
+  companyId: ID
+  employeeId: ID
+  biometricId: String
+  deviceId: String
+  deviceName: String
+  location: String
+  punchTime: String!
+  punchType: PunchType!
+  verifyMode: VerifyMode
+  punchSource: PunchSource!
+  status: PunchStatus!
+}
+
+# DailyAttendance - Processed daily attendance
+type DailyAttendance {
+  id: ID!
+  tenantId: ID!
+  companyId: ID!
+  employeeId: ID!
+  attendanceDate: String!
+  shift: Shift
+  firstPunchIn: String
+  lastPunchOut: String
+  totalHoursWorked: Float
+  overtimeHours: Float
+  status: AttendanceStatus!
+  lateByMinutes: Int
+  earlyLeavingMinutes: Int
+  punchCount: Int
+  hasMissedPunch: Boolean
+  missedPunchType: MissedPunchType
+  isRegularized: Boolean
+  remarks: String
+}
+
+# AttendanceRegularization - Attendance correction requests
+type AttendanceRegularization {
+  id: ID!
+  tenantId: ID!
+  companyId: ID!
+  employeeId: ID!
+  dailyAttendanceId: ID
+  regularizationType: RegularizationType!
+  regularizationDate: String!
+  originalPunchIn: String
+  originalPunchOut: String
+  regularizedPunchIn: String
+  regularizedPunchOut: String
+  reason: String!
+  status: ApprovalStatus!
+  approvedBy: ID
+  approvedAt: String
+  rejectionReason: String
+}
+
+# ====================
+# INPUTS
+# ====================
+
+input ShiftInput {
+  code: String!
+  name: String!
+  description: String
+  shiftType: ShiftType!
+  timingMode: TimingMode!
+  startTime: String!
+  endTime: String!
+  workingHours: Float!
+  breakDurationMinutes: Int
+  isNightShift: Boolean
+  isOtEligible: Boolean
+  firstHalfEnd: String
+  secondHalfStart: String
+  isActive: Boolean
+  displayOrder: Int
+  breaks: [ShiftBreakInput]
+}
+
+input ShiftBreakInput {
+  breakType: BreakType!
+  name: String
+  startTime: String!
+  endTime: String!
+  durationMinutes: Int!
+  isPaid: Boolean
+}
+
+input HolidayInput {
+  date: String!
+  name: String!
+  holidayType: String!
+  category: HolidayCategory!
+  isMandatory: Boolean
+  isNiActCompliant: Boolean
+  isFloating: Boolean
+  religion: Religion
+  description: String
+  companyIds: [ID]
+  locationIds: [ID]
+}
+
+input AttendancePolicyTemplateInput {
+  templateCode: String!
+  templateName: String!
+  description: String
+  isDefault: Boolean
+  isActive: Boolean
+  priority: Int
+  effectiveFrom: String!
+  effectiveTo: String
+  criteria: JSON
+  applicableShiftIds: [ID]
+  weekoffRules: [WeekoffRuleInput]
+  incentives: [PolicyIncentiveInput]
+  treatAbsenceAsLeave: Boolean
+  markHolidays: Boolean
+  markWeekoffs: Boolean
+  minHoursForPresent: Float
+  minHoursForHalfDay: Float
+  graceInMinutes: Int
+  graceOutMinutes: Int
+  firstHalfEnd: String
+  secondHalfStart: String
+  isOtEligible: Boolean
+  hasIncentives: Boolean
+}
+
+input WeekoffRuleInput {
+  dayOfWeek: WeekDay!
+  pattern: WeekoffPattern!
+}
+
+input PolicyIncentiveInput {
+  payheadCode: String!
+  calcType: IncentiveCalcType!
+  overrideValue: Float
+  isActive: Boolean
+}
+
+input PunchLogInput {
+  employeeId: ID
+  biometricId: String
+  deviceId: String
+  deviceName: String
+  location: String
+  punchTime: String!
+  punchType: PunchType!
+  verifyMode: VerifyMode
+  punchSource: PunchSource!
+}
+
+input RegularizationInput {
+  dailyAttendanceId: ID
+  regularizationType: RegularizationType!
+  regularizationDate: String!
+  regularizedPunchIn: String
+  regularizedPunchOut: String
+  reason: String!
+}
+
+# ====================
+# QUERIES
+# ====================
+# NOTE: tenantId is required for all queries (multi-tenancy pattern)
+
+extend type Query {
+  # Shifts
+  shifts(tenantId: String!, companyId: ID, isActive: Boolean): [Shift]
+  shift(tenantId: String!, id: ID!): Shift
+
+  # Holidays
+  holidays(tenantId: String!, companyId: ID, year: Int, locationId: ID): [Holiday]
+  holiday(tenantId: String!, id: ID!): Holiday
+
+  # Attendance Policy Templates
+  attendancePolicyTemplates(tenantId: String!, companyId: ID, isActive: Boolean): [AttendancePolicyTemplate]
+  attendancePolicyTemplate(tenantId: String!, id: ID!): AttendancePolicyTemplate
+
+  # Punch Logs
+  punchLogs(tenantId: String!, companyId: ID, dateFrom: String!, dateTo: String!, employeeId: ID, status: PunchStatus): [PunchLog]
+
+  # Daily Attendance
+  dailyAttendance(tenantId: String!, companyId: ID!, dateFrom: String!, dateTo: String!, employeeId: ID, status: AttendanceStatus): [DailyAttendance]
+  employeeAttendance(tenantId: String!, employeeId: ID!, dateFrom: String!, dateTo: String!): [DailyAttendance]
+
+  # Regularizations
+  regularizations(tenantId: String!, companyId: ID, status: ApprovalStatus, employeeId: ID): [AttendanceRegularization]
+  pendingRegularizations(tenantId: String!, companyId: ID!): [AttendanceRegularization]
+}
+
+# ====================
+# MUTATIONS
+# ====================
+# NOTE: tenantId is required for all mutations (multi-tenancy pattern)
+
+extend type Mutation {
+  # Shifts
+  createShift(tenantId: String!, companyId: ID, input: ShiftInput!): Shift
+  updateShift(tenantId: String!, id: ID!, input: ShiftInput!): Shift
+  deleteShift(tenantId: String!, id: ID!): Boolean
+
+  # Holidays
+  createHoliday(tenantId: String!, input: HolidayInput!): Holiday
+  updateHoliday(tenantId: String!, id: ID!, input: HolidayInput!): Holiday
+  deleteHoliday(tenantId: String!, id: ID!): Boolean
+  bulkCreateHolidays(tenantId: String!, inputs: [HolidayInput]!): [Holiday]
+
+  # Attendance Policy Templates
+  createAttendancePolicyTemplate(tenantId: String!, companyId: ID, input: AttendancePolicyTemplateInput!): AttendancePolicyTemplate
+  updateAttendancePolicyTemplate(tenantId: String!, id: ID!, input: AttendancePolicyTemplateInput!): AttendancePolicyTemplate
+  deleteAttendancePolicyTemplate(tenantId: String!, id: ID!): Boolean
+
+  # Punch Logs
+  recordPunch(tenantId: String!, companyId: ID!, input: PunchLogInput!): PunchLog
+  bulkImportPunches(tenantId: String!, companyId: ID!, inputs: [PunchLogInput]!): Int
+  mapUnmatchedPunch(tenantId: String!, punchLogId: ID!, employeeId: ID!): PunchLog
+
+  # Daily Attendance
+  processAttendance(tenantId: String!, companyId: ID!, date: String!): Int
+  manualAttendanceEntry(tenantId: String!, companyId: ID!, employeeId: ID!, date: String!, punchIn: String, punchOut: String, status: AttendanceStatus): DailyAttendance
+
+  # Regularizations
+  submitRegularization(tenantId: String!, companyId: ID!, input: RegularizationInput!): AttendanceRegularization
+  approveRegularization(tenantId: String!, id: ID!): AttendanceRegularization
+  rejectRegularization(tenantId: String!, id: ID!, reason: String!): AttendanceRegularization
+}
+
+# ====================
+# ENUMS
+# ====================
+
+enum ShiftType {
+  GENERAL
+  ROTATIONAL
+  NIGHT
+  FLEXI
+}
+
+enum TimingMode {
+  FIXED
+  FILO
+  FLEXI
+}
+
+enum BreakType {
+  TEA
+  LUNCH
+  DINNER
+  SHORT
+  OTHER
+}
+
+enum HolidayCategory {
+  NATIONAL
+  REGIONAL
+  COMPANY
+  OPTIONAL
+}
+
+enum Religion {
+  HINDU
+  ISLAMIC
+  CHRISTIAN
+  SIKH
+  BUDDHIST
+  JAIN
+  OTHER
+}
+
+# Named WeekDay to avoid conflict with java.time.DayOfWeek
+enum WeekDay {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum WeekoffPattern {
+  EVERY_WEEK
+  FIRST_ONLY
+  SECOND_ONLY
+  THIRD_ONLY
+  FOURTH_ONLY
+  FIFTH_ONLY
+  FIRST_THIRD
+  SECOND_FOURTH
+  FIRST_THIRD_FIFTH
+  SECOND_FOURTH_FIFTH
+  ALL_EXCEPT_FIRST
+  ALL_EXCEPT_FIFTH
+}
+
+enum IncentiveCalcType {
+  FIXED
+  FORMULA
+  PERCENTAGE
+  DAYS_BASED
+}
+
+enum PunchType {
+  IN
+  OUT
+}
+
+enum PunchSource {
+  BIOMETRIC
+  PORTAL
+  MOBILE
+  EXCEL_IMPORT
+  MANUAL
+  API
+}
+
+enum PunchStatus {
+  MATCHED
+  UNMATCHED
+}
+
+enum VerifyMode {
+  FINGER
+  CARD
+  FACE
+  PIN
+  PASSWORD
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  HOLIDAY
+  HALF_DAY
+  WEEKLY_OFF
+  HALF_ABSENT
+}
+
+enum MissedPunchType {
+  MISSING_IN
+  MISSING_OUT
+  ODD_PUNCHES
+  SINGLE_PUNCH
+}
+
+enum RegularizationType {
+  MISSED_PUNCH
+  WRONG_PUNCH
+  LATE_ENTRY
+  EARLY_EXIT
+  ON_DUTY
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
