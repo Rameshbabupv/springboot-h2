@@ -1,0 +1,386 @@
+# =============================================================================
+# LEAVE MODULE - GraphQL Schema
+# =============================================================================
+# Covers: LeaveType, LeavePolicy, LeavePolicyEntitlement, LeavePolicyCriteria,
+#         LeaveBalance, LeaveApplication, LeaveApplicationAttachment
+# =============================================================================
+
+# =============================================================================
+# ENUMS
+# =============================================================================
+
+enum LeaveCategory {
+    EARNED
+    DEFINED
+    UNLIMITED
+    COMPENSATORY
+}
+
+enum CreditMethod {
+    ANNUAL
+    MONTHLY
+    WORKING_DAYS
+    UNLIMITED
+    CUSTOM
+}
+
+enum CreditTiming {
+    YEAR_START
+    MONTH_START
+    MONTH_END
+    CONTINUOUS
+    AFTER_PROBATION
+    QUARTERLY
+}
+
+enum YearEndAction {
+    LAPSE
+    CARRY_FORWARD
+    ENCASH
+    CARRY_AND_ENCASH
+    NONE
+}
+
+enum CarryForwardExpiry {
+    NEVER
+    Q1
+    Q2
+    H1
+    YEAR_END
+}
+
+enum LeaveApplicationStatus {
+    DRAFT
+    PENDING
+    APPROVED
+    REJECTED
+    CANCELLED
+    WITHDRAWN
+}
+
+enum LeaveDayType {
+    FULL
+    FIRST_HALF
+    SECOND_HALF
+}
+
+# =============================================================================
+# TYPES
+# =============================================================================
+
+type LeaveType {
+    id: ID!
+    tenantId: String!
+    companyId: ID
+    company: Company
+    code: String!
+    name: String!
+    category: LeaveCategory!
+    description: String
+    icon: String
+    color: String
+    isActive: Boolean!
+    createdAt: String
+    updatedAt: String
+}
+
+type LeavePolicy {
+    id: ID!
+    tenantId: String!
+    companyId: ID
+    company: Company
+    code: String!
+    name: String!
+    description: String
+    leaveYearStart: String!
+    status: String!
+    effectiveFrom: String
+    effectiveTo: String
+    isDefault: Boolean!
+    createdAt: String
+    updatedAt: String
+    entitlements: [LeavePolicyEntitlement!]
+    criteria: [LeavePolicyCriteria!]
+    employeeCount: Int
+}
+
+type LeavePolicyEntitlement {
+    id: ID!
+    leavePolicy: LeavePolicy!
+    leaveType: LeaveType!
+    isEnabled: Boolean!
+    # Credit Configuration
+    creditMethod: CreditMethod!
+    annualQuota: Float
+    monthlyCredit: Float
+    workingDaysPerCredit: Int
+    creditPerWorkingDays: Float
+    creditTiming: CreditTiming
+    # Paid/Unpaid
+    isPaid: Boolean!
+    # Year End Handling
+    yearEndAction: YearEndAction!
+    maxCarryForward: Float
+    carryForwardExpiry: CarryForwardExpiry
+    encashmentAllowed: Boolean!
+    maxEncashment: Float
+    # Pro-rata
+    proRataOnJoining: Boolean!
+    # Restrictions
+    minDaysPerApplication: Float
+    maxDaysPerApplication: Float
+    advanceNoticeDays: Int
+    maxConsecutiveDays: Int
+    # Application Settings
+    allowHalfDay: Boolean!
+    requiresAttachment: Boolean!
+    attachmentRequiredAfterDays: Int
+    # Payhead Links
+    lopPayheadCode: String
+    encashPayheadCode: String
+    createdAt: String
+    updatedAt: String
+}
+
+type LeavePolicyCriteria {
+    id: ID!
+    leavePolicy: LeavePolicy!
+    criteriaType: String!
+    criteriaValue: String!
+    includeExclude: String!
+    createdAt: String
+}
+
+type LeaveBalance {
+    id: ID!
+    tenantId: String!
+    company: Company!
+    employee: Employee!
+    leaveType: LeaveType!
+    leaveYear: String!
+    openingBalance: Float!
+    credited: Float!
+    used: Float!
+    pending: Float!
+    lapsed: Float!
+    encashed: Float!
+    carriedForward: Float!
+    adjusted: Float!
+    available: Float!
+    lastCreditedAt: String
+    createdAt: String
+    updatedAt: String
+}
+
+type LeaveApplication {
+    id: ID!
+    tenantId: String!
+    company: Company!
+    employee: Employee!
+    leaveType: LeaveType!
+    leavePolicy: LeavePolicy
+    applicationNumber: String!
+    fromDate: String!
+    toDate: String!
+    fromDayType: LeaveDayType!
+    toDayType: LeaveDayType!
+    totalDays: Float!
+    reason: String
+    status: LeaveApplicationStatus!
+    appliedAt: String
+    approvedBy: UserAccount
+    approvedAt: String
+    rejectionReason: String
+    cancelledBy: UserAccount
+    cancelledAt: String
+    cancellationReason: String
+    attachments: [LeaveApplicationAttachment!]
+    createdAt: String
+    updatedAt: String
+}
+
+type LeaveApplicationAttachment {
+    id: ID!
+    leaveApplication: LeaveApplication!
+    fileName: String!
+    filePath: String!
+    fileType: String!
+    fileSize: Int!
+    uploadedAt: String!
+}
+
+# Summary/Report Types
+type LeaveBalanceSummary {
+    leaveType: LeaveType!
+    totalEmployees: Int!
+    totalAvailable: Float!
+    totalUsed: Float!
+    totalPending: Float!
+}
+
+type YearEndProcessResult {
+    success: Boolean!
+    processedEmployees: Int!
+    processedBalances: Int!
+    errors: [String!]
+}
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+input LeaveTypeInput {
+    code: String!
+    name: String!
+    category: LeaveCategory!
+    description: String
+    icon: String
+    color: String
+    isActive: Boolean
+}
+
+input LeavePolicyInput {
+    code: String!
+    name: String!
+    description: String
+    leaveYearStart: String
+    status: String
+    effectiveFrom: String
+    effectiveTo: String
+    isDefault: Boolean
+}
+
+input LeavePolicyEntitlementInput {
+    leaveTypeId: ID!
+    isEnabled: Boolean!
+    # Credit Configuration
+    creditMethod: CreditMethod!
+    annualQuota: Float
+    monthlyCredit: Float
+    workingDaysPerCredit: Int
+    creditPerWorkingDays: Float
+    creditTiming: CreditTiming
+    # Paid/Unpaid
+    isPaid: Boolean
+    # Year End Handling
+    yearEndAction: YearEndAction!
+    maxCarryForward: Float
+    carryForwardExpiry: CarryForwardExpiry
+    encashmentAllowed: Boolean
+    maxEncashment: Float
+    # Pro-rata
+    proRataOnJoining: Boolean
+    # Restrictions
+    minDaysPerApplication: Float
+    maxDaysPerApplication: Float
+    advanceNoticeDays: Int
+    maxConsecutiveDays: Int
+    # Application Settings
+    allowHalfDay: Boolean
+    requiresAttachment: Boolean
+    attachmentRequiredAfterDays: Int
+    # Payhead Links
+    lopPayheadCode: String
+    encashPayheadCode: String
+}
+
+input LeavePolicyCriteriaInput {
+    criteriaType: String!
+    criteriaValue: String!
+    includeExclude: String!
+}
+
+input LeaveApplicationInput {
+    leaveTypeId: ID!
+    fromDate: String!
+    toDate: String!
+    fromDayType: LeaveDayType!
+    toDayType: LeaveDayType!
+    reason: String
+}
+
+input LeaveBalanceAdjustmentInput {
+    adjustment: Float!
+    reason: String!
+}
+
+# =============================================================================
+# QUERIES (extend)
+# =============================================================================
+
+extend type Query {
+    # LeaveType queries
+    leaveTypes(tenantId: String!, companyId: ID!, activeOnly: Boolean): [LeaveType!]!
+    leaveType(id: ID!): LeaveType
+    leaveTypeByCode(tenantId: String!, companyId: ID!, code: String!): LeaveType
+    sharedLeaveTypes(tenantId: String!): [LeaveType!]!
+
+    # LeavePolicy queries
+    leavePolicies(tenantId: String!, companyId: ID!, status: String): [LeavePolicy!]!
+    leavePolicy(id: ID!): LeavePolicy
+    leavePolicyWithEntitlements(id: ID!): LeavePolicy
+    defaultLeavePolicy(tenantId: String!, companyId: ID!): LeavePolicy
+
+    # LeaveBalance queries
+    employeeLeaveBalances(tenantId: String!, companyId: ID!, employeeId: ID!, leaveYear: String): [LeaveBalance!]!
+    leaveBalancesByCompany(tenantId: String!, companyId: ID!, leaveYear: String!): [LeaveBalance!]!
+    leaveBalancesSummary(tenantId: String!, companyId: ID!, leaveYear: String!): [LeaveBalanceSummary!]!
+
+    # LeaveApplication queries
+    leaveApplications(tenantId: String!, companyId: ID!, employeeId: ID, status: LeaveApplicationStatus, fromDate: String, toDate: String): [LeaveApplication!]!
+    leaveApplication(id: ID!): LeaveApplication
+    leaveApplicationByNumber(tenantId: String!, companyId: ID!, applicationNumber: String!): LeaveApplication
+    pendingApprovals(tenantId: String!, companyId: ID!, approverId: ID!): [LeaveApplication!]!
+    myLeaveApplications(tenantId: String!, companyId: ID!, employeeId: ID!): [LeaveApplication!]!
+}
+
+# =============================================================================
+# MUTATIONS (extend)
+# =============================================================================
+
+extend type Mutation {
+    # LeaveType mutations
+    createLeaveType(tenantId: String!, companyId: ID, input: LeaveTypeInput!): LeaveType!
+    updateLeaveType(id: ID!, input: LeaveTypeInput!): LeaveType!
+    deleteLeaveType(id: ID!): Boolean!
+    toggleLeaveTypeStatus(id: ID!): LeaveType!
+
+    # LeavePolicy mutations
+    createLeavePolicy(tenantId: String!, companyId: ID, input: LeavePolicyInput!): LeavePolicy!
+    updateLeavePolicy(id: ID!, input: LeavePolicyInput!): LeavePolicy!
+    deleteLeavePolicy(id: ID!): Boolean!
+    activateLeavePolicy(id: ID!): LeavePolicy!
+    deactivateLeavePolicy(id: ID!): LeavePolicy!
+    setDefaultLeavePolicy(id: ID!): LeavePolicy!
+
+    # LeavePolicyEntitlement mutations
+    savePolicyEntitlements(policyId: ID!, entitlements: [LeavePolicyEntitlementInput!]!): LeavePolicy!
+    updatePolicyEntitlement(id: ID!, input: LeavePolicyEntitlementInput!): LeavePolicyEntitlement!
+
+    # LeavePolicyCriteria mutations
+    savePolicyCriteria(policyId: ID!, criteria: [LeavePolicyCriteriaInput!]!): LeavePolicy!
+
+    # LeaveBalance mutations
+    adjustLeaveBalance(id: ID!, input: LeaveBalanceAdjustmentInput!): LeaveBalance!
+    creditLeaveBalance(tenantId: String!, employeeId: ID!, leaveTypeId: ID!, leaveYear: String!, amount: Float!): LeaveBalance!
+    initializeEmployeeBalances(tenantId: String!, companyId: ID!, employeeId: ID!, leaveYear: String!): [LeaveBalance!]!
+    runYearEndProcess(tenantId: String!, companyId: ID!, leaveYear: String!): YearEndProcessResult!
+
+    # LeaveApplication mutations
+    createLeaveApplication(tenantId: String!, companyId: ID!, employeeId: ID!, input: LeaveApplicationInput!): LeaveApplication!
+    updateLeaveApplication(id: ID!, input: LeaveApplicationInput!): LeaveApplication!
+    submitLeaveApplication(id: ID!): LeaveApplication!
+    approveLeaveApplication(id: ID!, remarks: String): LeaveApplication!
+    rejectLeaveApplication(id: ID!, reason: String!): LeaveApplication!
+    cancelLeaveApplication(id: ID!, reason: String!): LeaveApplication!
+    withdrawLeaveApplication(id: ID!): LeaveApplication!
+    deleteLeaveApplication(id: ID!): Boolean!
+
+    # LeaveApplicationAttachment mutations
+    addLeaveApplicationAttachment(applicationId: ID!, fileName: String!, filePath: String!, fileType: String!, fileSize: Int!): LeaveApplicationAttachment!
+    deleteLeaveApplicationAttachment(id: ID!): Boolean!
+
+    # Employee Leave Policy Assignment
+    assignLeavePolicyToEmployee(employeeId: ID!, policyId: ID!): Employee!
+    removeLeavePolicyFromEmployee(employeeId: ID!): Employee!
+}
