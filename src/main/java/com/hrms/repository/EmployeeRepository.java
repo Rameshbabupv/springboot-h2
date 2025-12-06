@@ -66,4 +66,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     @Query("SELECT COUNT(e) FROM Employee e WHERE e.tenantId = :tenantId AND e.employeeStatus = :status")
     long countByTenantIdAndStatus(@Param("tenantId") String tenantId, @Param("status") String status);
+
+    // =====================================================
+    // BIOMETRIC QUERIES
+    // =====================================================
+
+    /**
+     * Find employees by biometric ID.
+     */
+    List<Employee> findByTenantIdAndBiometricId(String tenantId, String biometricId);
 }

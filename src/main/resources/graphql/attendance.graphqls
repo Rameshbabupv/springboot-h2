@@ -115,6 +115,8 @@ type PunchLog {
   tenantId: ID!
   companyId: ID
   employeeId: ID
+  company: Company
+  employee: Employee
   biometricId: String
   deviceId: String
   deviceName: String
@@ -124,6 +126,7 @@ type PunchLog {
   verifyMode: VerifyMode
   punchSource: PunchSource!
   status: PunchStatus!
+  createdAt: String
 }
 
 # DailyAttendance - Processed daily attendance
@@ -132,6 +135,8 @@ type DailyAttendance {
   tenantId: ID!
   companyId: ID!
   employeeId: ID!
+  company: Company
+  employee: Employee
   attendanceDate: String!
   shift: Shift
   firstPunchIn: String
@@ -146,6 +151,8 @@ type DailyAttendance {
   missedPunchType: MissedPunchType
   isRegularized: Boolean
   remarks: String
+  createdAt: String
+  updatedAt: String
 }
 
 # AttendanceRegularization - Attendance correction requests
@@ -154,7 +161,10 @@ type AttendanceRegularization {
   tenantId: ID!
   companyId: ID!
   employeeId: ID!
+  company: Company
+  employee: Employee
   dailyAttendanceId: ID
+  dailyAttendance: DailyAttendance
   regularizationType: RegularizationType!
   regularizationDate: String!
   originalPunchIn: String
@@ -164,8 +174,11 @@ type AttendanceRegularization {
   reason: String!
   status: ApprovalStatus!
   approvedBy: ID
+  approvedByUser: UserAccount
   approvedAt: String
   rejectionReason: String
+  createdAt: String
+  updatedAt: String
 }
 
 # ====================
@@ -301,6 +314,9 @@ extend type Query {
   # Regularizations
   regularizations(tenantId: String!, companyId: ID, status: ApprovalStatus, employeeId: ID): [AttendanceRegularization]
   pendingRegularizations(tenantId: String!, companyId: ID!): [AttendanceRegularization]
+
+  # Biometric Sync
+  supabaseRecordCount: Int
 }
 
 # ====================
@@ -338,6 +354,20 @@ extend type Mutation {
   submitRegularization(tenantId: String!, companyId: ID!, input: RegularizationInput!): AttendanceRegularization
   approveRegularization(tenantId: String!, id: ID!): AttendanceRegularization
   rejectRegularization(tenantId: String!, id: ID!, reason: String!): AttendanceRegularization
+
+  # Biometric Sync
+  syncBiometricData(tenantId: String!, companyId: ID): BiometricSyncResult
+  testSupabaseConnection: Boolean
+}
+
+# Biometric sync result type
+type BiometricSyncResult {
+  totalFetched: Int!
+  inserted: Int!
+  skippedDuplicate: Int!
+  skippedNoEmployee: Int!
+  failed: Int!
+  message: String
 }
 
 # ====================

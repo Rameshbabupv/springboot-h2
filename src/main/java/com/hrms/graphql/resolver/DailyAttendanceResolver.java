@@ -1,11 +1,14 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.entity.Company;
 import com.hrms.entity.DailyAttendance;
+import com.hrms.entity.Employee;
 import com.hrms.enums.AttendanceStatus;
 import com.hrms.service.DailyAttendanceService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDate;
@@ -23,6 +26,18 @@ public class DailyAttendanceResolver {
 
     public DailyAttendanceResolver(DailyAttendanceService attendanceService) {
         this.attendanceService = attendanceService;
+    }
+
+    // Schema Mappings for nested objects
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "employee")
+    public Employee employee(DailyAttendance attendance) {
+        return attendance.getEmployee();
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "company")
+    public Company company(DailyAttendance attendance) {
+        return attendance.getCompany();
     }
 
     // Queries

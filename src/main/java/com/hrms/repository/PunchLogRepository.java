@@ -149,4 +149,14 @@ public interface PunchLogRepository extends JpaRepository<PunchLog, Long> {
             @Param("employeeId") Long employeeId,
             @Param("punchTime") OffsetDateTime punchTime,
             @Param("source") PunchSource source);
+
+    /**
+     * Find punches by employee ID and time range (derived query).
+     */
+    List<PunchLog> findByEmployeeIdAndPunchTimeBetween(Long employeeId, OffsetDateTime start, OffsetDateTime end);
+
+    /**
+     * Count punches by employee ID and time range (derived query).
+     */
+    long countByEmployeeIdAndPunchTimeBetween(Long employeeId, OffsetDateTime start, OffsetDateTime end);
 }

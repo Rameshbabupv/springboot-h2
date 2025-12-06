@@ -114,6 +114,9 @@ public class Employee {
     @Column(name = "emp_id", nullable = false, length = 50)
     private String empId;
 
+    @Column(name = "biometric_id", length = 50)
+    private String biometricId;
+
     @NotBlank
     @Column(name = "employee_name", nullable = false, length = 255)
     private String employeeName;

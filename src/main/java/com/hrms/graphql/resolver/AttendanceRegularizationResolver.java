@@ -1,12 +1,17 @@
 package com.hrms.graphql.resolver;
 
 import com.hrms.entity.AttendanceRegularization;
+import com.hrms.entity.Company;
+import com.hrms.entity.DailyAttendance;
+import com.hrms.entity.Employee;
+import com.hrms.entity.UserAccount;
 import com.hrms.enums.ApprovalStatus;
 import com.hrms.graphql.input.RegularizationInput;
 import com.hrms.service.AttendanceRegularizationService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -21,6 +26,28 @@ public class AttendanceRegularizationResolver {
 
     public AttendanceRegularizationResolver(AttendanceRegularizationService regularizationService) {
         this.regularizationService = regularizationService;
+    }
+
+    // Schema Mappings for nested objects
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "employee")
+    public Employee employee(AttendanceRegularization regularization) {
+        return regularization.getEmployee();
+    }
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "company")
+    public Company company(AttendanceRegularization regularization) {
+        return regularization.getCompany();
+    }
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "dailyAttendance")
+    public DailyAttendance dailyAttendance(AttendanceRegularization regularization) {
+        return regularization.getDailyAttendance();
+    }
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "approvedByUser")
+    public UserAccount approvedByUser(AttendanceRegularization regularization) {
+        return regularization.getApprovedBy();
     }
 
     // Queries

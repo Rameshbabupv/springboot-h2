@@ -1,5 +1,7 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.entity.Company;
+import com.hrms.entity.Employee;
 import com.hrms.entity.PunchLog;
 import com.hrms.enums.PunchStatus;
 import com.hrms.graphql.input.PunchLogInput;
@@ -7,9 +9,12 @@ import com.hrms.service.PunchLogService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -23,6 +28,18 @@ public class PunchLogResolver {
 
     public PunchLogResolver(PunchLogService punchLogService) {
         this.punchLogService = punchLogService;
+    }
+
+    // Schema Mappings for nested objects
+
+    @SchemaMapping(typeName = "PunchLog", field = "employee")
+    public Employee employee(PunchLog punchLog) {
+        return punchLog.getEmployee();
+    }
+
+    @SchemaMapping(typeName = "PunchLog", field = "company")
+    public Company company(PunchLog punchLog) {
+        return punchLog.getCompany();
     }
 
     // Queries
@@ -64,6 +81,13 @@ public class PunchLogResolver {
 
     private OffsetDateTime parseDateTime(String dateTime) {
         if (dateTime == null) return null;
+        // Handle date-only format (e.g., "2025-12-05")
+        if (dateTime.length() == 10 && !dateTime.contains("T")) {
+            return LocalDate.parse(dateTime)
+                    .atStartOfDay()
+                    .atZone(ZoneId.of("Asia/Kolkata"))
+                    .toOffsetDateTime();
+        }
         return OffsetDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
     }
 }
