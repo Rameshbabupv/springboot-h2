@@ -1,7 +1,9 @@
 package com.hrms.service;
 
+import com.hrms.dto.response.BulkEntryResult;
 import com.hrms.entity.DailyAttendance;
 import com.hrms.enums.AttendanceStatus;
+import com.hrms.graphql.input.BulkAttendanceEntryInput;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -25,7 +27,16 @@ public interface DailyAttendanceService {
      */
     DailyAttendance manualAttendanceEntry(String tenantId, Long companyId, Long employeeId,
                                           LocalDate date, OffsetDateTime punchIn,
-                                          OffsetDateTime punchOut, AttendanceStatus status);
+                                          OffsetDateTime punchOut, AttendanceStatus status,
+                                          String remarks);
+
+    /**
+     * Bulk manual attendance entry for multiple employees.
+     * @param entries List of attendance entries
+     * @return Result with success/failure counts and errors
+     */
+    BulkEntryResult bulkManualAttendanceEntry(String tenantId, Long companyId,
+                                               List<BulkAttendanceEntryInput> entries);
 
     /**
      * Get attendance with filters.
@@ -33,6 +44,46 @@ public interface DailyAttendanceService {
     List<DailyAttendance> getAttendance(String tenantId, Long companyId,
                                          LocalDate dateFrom, LocalDate dateTo,
                                          Long employeeId, AttendanceStatus status);
+
+    /**
+     * Get attendance with extended filters (Time Center).
+     * @param tenantId Tenant identifier
+     * @param companyId Company identifier
+     * @param dateFrom Start date
+     * @param dateTo End date
+     * @param employeeId Filter by employee (optional)
+     * @param status Filter by status (optional)
+     * @param locationId Filter by employee's location (optional)
+     * @param departmentId Filter by employee's department (optional)
+     * @param searchQuery Search by employee name or code (optional)
+     */
+    List<DailyAttendance> getAttendanceWithFilters(String tenantId, Long companyId,
+                                                    LocalDate dateFrom, LocalDate dateTo,
+                                                    Long employeeId, AttendanceStatus status,
+                                                    Long locationId, Long departmentId,
+                                                    String searchQuery);
+
+    /**
+     * Update attendance status for a single record.
+     * @param tenantId Tenant identifier
+     * @param attendanceId Attendance record ID
+     * @param newStatus New status to set
+     * @param reason Reason for the change
+     * @return Updated attendance record
+     */
+    DailyAttendance updateAttendanceStatus(String tenantId, Long attendanceId,
+                                            AttendanceStatus newStatus, String reason);
+
+    /**
+     * Bulk update attendance status.
+     * @param tenantId Tenant identifier
+     * @param attendanceIds List of attendance IDs to update
+     * @param newStatus New status to set
+     * @param reason Reason for the changes
+     * @return Bulk operation result
+     */
+    BulkStatusUpdateResult bulkUpdateAttendanceStatus(String tenantId, List<Long> attendanceIds,
+                                                       AttendanceStatus newStatus, String reason);
 
     /**
      * Get attendance for a specific employee.
@@ -94,5 +145,23 @@ public interface DailyAttendanceService {
         int leave,
         int holiday,
         int weeklyOff
+    ) {}
+
+    /**
+     * Result DTO for bulk status update operation.
+     */
+    record BulkStatusUpdateResult(
+        int successCount,
+        int failedCount,
+        List<StatusUpdateResultItem> results
+    ) {}
+
+    /**
+     * Individual result item for bulk status update.
+     */
+    record StatusUpdateResultItem(
+        Long attendanceId,
+        String status,
+        String error
     ) {}
 }

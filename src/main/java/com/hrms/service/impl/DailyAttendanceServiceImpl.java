@@ -1,19 +1,26 @@
 package com.hrms.service.impl;
 
+import com.hrms.dto.response.BulkEntryError;
+import com.hrms.dto.response.BulkEntryResult;
 import com.hrms.entity.*;
 import com.hrms.enums.AttendanceStatus;
 import com.hrms.enums.MissedPunchType;
 import com.hrms.enums.PunchType;
+import com.hrms.graphql.input.BulkAttendanceEntryInput;
 import com.hrms.repository.*;
 import com.hrms.service.AttendancePolicyTemplateService;
 import com.hrms.service.DailyAttendanceService;
 import com.hrms.service.HolidayService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -21,9 +28,12 @@ import java.util.Optional;
 /**
  * Implementation of DailyAttendanceService.
  */
+@Slf4j
 @Service
 @Transactional
 public class DailyAttendanceServiceImpl implements DailyAttendanceService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final DailyAttendanceRepository attendanceRepository;
     private final PunchLogRepository punchLogRepository;
@@ -190,7 +200,8 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
     @Override
     public DailyAttendance manualAttendanceEntry(String tenantId, Long companyId, Long employeeId,
                                                   LocalDate date, OffsetDateTime punchIn,
-                                                  OffsetDateTime punchOut, AttendanceStatus status) {
+                                                  OffsetDateTime punchOut, AttendanceStatus status,
+                                                  String remarks) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
@@ -220,9 +231,78 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
         }
 
         attendance.setProcessedAt(OffsetDateTime.now());
-        attendance.setRemarks("Manual entry");
+        attendance.setRemarks(remarks != null ? remarks : "Manual entry");
 
         return attendanceRepository.save(attendance);
+    }
+
+    @Override
+    public BulkEntryResult bulkManualAttendanceEntry(String tenantId, Long companyId,
+                                                      List<BulkAttendanceEntryInput> entries) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+
+        List<BulkEntryError> errors = new ArrayList<>();
+        int successCount = 0;
+
+        for (BulkAttendanceEntryInput entry : entries) {
+            try {
+                // Parse date
+                LocalDate date = LocalDate.parse(entry.getDate(), DATE_FORMATTER);
+
+                // Parse punch times
+                OffsetDateTime punchIn = null;
+                OffsetDateTime punchOut = null;
+
+                if (entry.getPunchIn() != null && !entry.getPunchIn().isEmpty()) {
+                    punchIn = parseTimeToDateTime(date, entry.getPunchIn());
+                }
+                if (entry.getPunchOut() != null && !entry.getPunchOut().isEmpty()) {
+                    punchOut = parseTimeToDateTime(date, entry.getPunchOut());
+                }
+
+                // Create or update attendance
+                manualAttendanceEntry(tenantId, companyId, entry.getEmployeeId(),
+                        date, punchIn, punchOut, entry.getStatus(), entry.getRemarks());
+                successCount++;
+
+            } catch (DateTimeParseException e) {
+                errors.add(BulkEntryError.builder()
+                        .employeeId(entry.getEmployeeId())
+                        .date(entry.getDate())
+                        .message("Invalid date or time format: " + e.getMessage())
+                        .build());
+            } catch (IllegalArgumentException e) {
+                errors.add(BulkEntryError.builder()
+                        .employeeId(entry.getEmployeeId())
+                        .date(entry.getDate())
+                        .message(e.getMessage())
+                        .build());
+            } catch (Exception e) {
+                log.error("Error processing bulk entry for employee {}: {}", entry.getEmployeeId(), e.getMessage());
+                errors.add(BulkEntryError.builder()
+                        .employeeId(entry.getEmployeeId())
+                        .date(entry.getDate())
+                        .message("Unexpected error: " + e.getMessage())
+                        .build());
+            }
+        }
+
+        return BulkEntryResult.builder()
+                .successCount(successCount)
+                .failedCount(errors.size())
+                .errors(errors.isEmpty() ? null : errors)
+                .build();
+    }
+
+    /**
+     * Parse time string (HH:mm) to OffsetDateTime for a given date.
+     */
+    private OffsetDateTime parseTimeToDateTime(LocalDate date, String timeStr) {
+        String[] parts = timeStr.split(":");
+        int hour = Integer.parseInt(parts[0]);
+        int minute = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+        return date.atTime(hour, minute).atOffset(ZoneOffset.UTC);
     }
 
     @Override
@@ -237,6 +317,65 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
             return attendanceRepository.findByTenantAndCompanyAndDateAndStatus(tenantId, companyId, dateFrom, status);
         }
         return attendanceRepository.findByTenantAndCompanyAndDate(tenantId, companyId, dateFrom);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DailyAttendance> getAttendanceWithFilters(String tenantId, Long companyId,
+                                                           LocalDate dateFrom, LocalDate dateTo,
+                                                           Long employeeId, AttendanceStatus status,
+                                                           Long locationId, Long departmentId,
+                                                           String searchQuery) {
+        return attendanceRepository.findAttendanceWithFilters(
+                tenantId, companyId, dateFrom, dateTo,
+                employeeId, status, locationId, departmentId, searchQuery);
+    }
+
+    @Override
+    public DailyAttendance updateAttendanceStatus(String tenantId, Long attendanceId,
+                                                   AttendanceStatus newStatus, String reason) {
+        DailyAttendance attendance = attendanceRepository.findById(attendanceId)
+                .orElseThrow(() -> new IllegalArgumentException("Attendance record not found: " + attendanceId));
+
+        if (!attendance.getTenantId().equals(tenantId)) {
+            throw new IllegalArgumentException("Tenant mismatch");
+        }
+
+        AttendanceStatus oldStatus = attendance.getStatus();
+        attendance.setStatus(newStatus);
+
+        // Append reason to remarks
+        String remarksUpdate = String.format("Status changed from %s to %s: %s", oldStatus, newStatus, reason);
+        if (attendance.getRemarks() != null && !attendance.getRemarks().isEmpty()) {
+            attendance.setRemarks(attendance.getRemarks() + " | " + remarksUpdate);
+        } else {
+            attendance.setRemarks(remarksUpdate);
+        }
+
+        log.info("Attendance {} status updated from {} to {} - Reason: {}", attendanceId, oldStatus, newStatus, reason);
+        return attendanceRepository.save(attendance);
+    }
+
+    @Override
+    public BulkStatusUpdateResult bulkUpdateAttendanceStatus(String tenantId, List<Long> attendanceIds,
+                                                              AttendanceStatus newStatus, String reason) {
+        List<StatusUpdateResultItem> results = new ArrayList<>();
+        int successCount = 0;
+        int failedCount = 0;
+
+        for (Long attendanceId : attendanceIds) {
+            try {
+                DailyAttendance updated = updateAttendanceStatus(tenantId, attendanceId, newStatus, reason);
+                results.add(new StatusUpdateResultItem(attendanceId, updated.getStatus().name(), null));
+                successCount++;
+            } catch (Exception e) {
+                log.error("Failed to update attendance {}: {}", attendanceId, e.getMessage());
+                results.add(new StatusUpdateResultItem(attendanceId, null, e.getMessage()));
+                failedCount++;
+            }
+        }
+
+        return new BulkStatusUpdateResult(successCount, failedCount, results);
     }
 
     @Override
@@ -284,7 +423,7 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
             int count = ((Number) row[1]).intValue();
 
             switch (status) {
-                case PRESENT -> present = count;
+                case PRESENT, ON_DUTY -> present += count;
                 case ABSENT -> absent = count;
                 case HALF_DAY, HALF_ABSENT -> halfDay = count;
                 case LEAVE -> leave = count;
@@ -313,7 +452,7 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
             int count = ((Number) row[1]).intValue();
 
             switch (status) {
-                case PRESENT -> present = count;
+                case PRESENT, ON_DUTY -> present += count;
                 case ABSENT -> absent = count;
                 case HALF_DAY, HALF_ABSENT -> halfDay = count;
                 case LEAVE -> leave = count;

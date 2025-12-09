@@ -193,6 +193,14 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
 
     @Override
     @Transactional(readOnly = true)
+    public List<AttendanceRegularization> getEmployeeRegularizations(String tenantId, Long employeeId,
+                                                                      ApprovalStatus status,
+                                                                      LocalDate startDate, LocalDate endDate) {
+        return regularizationRepository.findByTenantAndEmployeeWithFilters(tenantId, employeeId, status, startDate, endDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countPendingByEmployee(String tenantId, Long employeeId) {
         return regularizationRepository.countPendingByEmployee(tenantId, employeeId);
     }
@@ -229,6 +237,48 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
         }
 
         return new RegularizationStatusSummary(pending, approved, rejected);
+    }
+
+    @Override
+    public BulkRegularizationResult bulkApproveRegularizations(String tenantId, List<Long> ids,
+                                                                Long approverId, String remarks) {
+        java.util.List<RegularizationResultItem> results = new java.util.ArrayList<>();
+        int successCount = 0;
+        int failedCount = 0;
+
+        for (Long id : ids) {
+            try {
+                AttendanceRegularization approved = approveRegularization(tenantId, id, approverId);
+                results.add(new RegularizationResultItem(id, approved.getStatus().name(), null));
+                successCount++;
+            } catch (Exception e) {
+                results.add(new RegularizationResultItem(id, null, e.getMessage()));
+                failedCount++;
+            }
+        }
+
+        return new BulkRegularizationResult(successCount, failedCount, results);
+    }
+
+    @Override
+    public BulkRegularizationResult bulkRejectRegularizations(String tenantId, List<Long> ids,
+                                                               Long approverId, String reason) {
+        java.util.List<RegularizationResultItem> results = new java.util.ArrayList<>();
+        int successCount = 0;
+        int failedCount = 0;
+
+        for (Long id : ids) {
+            try {
+                AttendanceRegularization rejected = rejectRegularization(tenantId, id, approverId, reason);
+                results.add(new RegularizationResultItem(id, rejected.getStatus().name(), null));
+                successCount++;
+            } catch (Exception e) {
+                results.add(new RegularizationResultItem(id, null, e.getMessage()));
+                failedCount++;
+            }
+        }
+
+        return new BulkRegularizationResult(successCount, failedCount, results);
     }
 
     private LocalDate parseDate(String date) {

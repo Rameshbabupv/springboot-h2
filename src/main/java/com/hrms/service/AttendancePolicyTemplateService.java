@@ -29,8 +29,12 @@ public interface AttendancePolicyTemplateService {
 
     /**
      * Get templates with optional filters.
+     * @param tenantId Tenant identifier (required)
+     * @param companyId Filter by company (optional)
+     * @param isActive Filter by active status (optional)
+     * @param searchQuery Search by template name or code (optional)
      */
-    List<AttendancePolicyTemplate> getTemplates(String tenantId, Long companyId, Boolean isActive);
+    List<AttendancePolicyTemplate> getTemplates(String tenantId, Long companyId, Boolean isActive, String searchQuery);
 
     /**
      * Get a single template by ID.
@@ -61,4 +65,13 @@ public interface AttendancePolicyTemplateService {
      * Find template by code.
      */
     Optional<AttendancePolicyTemplate> findByCode(String tenantId, String code);
+
+    /**
+     * Set a template as the default for the tenant.
+     * Only one template can be default at a time.
+     * @param tenantId Tenant identifier
+     * @param id Template ID to set as default
+     * @return The updated template
+     */
+    AttendancePolicyTemplate setDefaultTemplate(String tenantId, Long id);
 }

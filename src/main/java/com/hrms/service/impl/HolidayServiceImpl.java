@@ -125,22 +125,9 @@ public class HolidayServiceImpl implements HolidayService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Holiday> getHolidays(String tenantId, Long companyId, Integer year, Long locationId) {
-        int targetYear = year != null ? year : LocalDate.now().getYear();
-
-        if (locationId != null) {
-            LocalDate startDate = LocalDate.of(targetYear, 1, 1);
-            LocalDate endDate = LocalDate.of(targetYear, 12, 31);
-            return holidayRepository.findByTenantAndLocationAndDateRange(tenantId, locationId, startDate, endDate);
-        }
-
-        if (companyId != null) {
-            LocalDate startDate = LocalDate.of(targetYear, 1, 1);
-            LocalDate endDate = LocalDate.of(targetYear, 12, 31);
-            return holidayRepository.findByTenantAndCompanyAndDateRange(tenantId, companyId, startDate, endDate);
-        }
-
-        return holidayRepository.findByTenantAndYear(tenantId, targetYear);
+    public List<Holiday> getHolidays(String tenantId, Long companyId, Integer year, Long locationId, String searchQuery) {
+        // Use the flexible filter query for all cases
+        return holidayRepository.findHolidaysWithFilters(tenantId, companyId, year, locationId, searchQuery);
     }
 
     @Override

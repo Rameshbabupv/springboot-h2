@@ -94,4 +94,28 @@ public interface AttendancePolicyTemplateRepository extends JpaRepository<Attend
     @Query("SELECT apt FROM AttendancePolicyTemplate apt WHERE apt.tenantId = :tenantId " +
            "AND apt.hasIncentives = true AND apt.isActive = true")
     List<AttendancePolicyTemplate> findWithIncentivesByTenant(@Param("tenantId") String tenantId);
+
+    /**
+     * Find templates with flexible filtering for frontend.
+     * Supports optional filters: companyId, isActive, searchQuery
+     */
+    @Query("SELECT apt FROM AttendancePolicyTemplate apt WHERE apt.tenantId = :tenantId " +
+           "AND (:companyId IS NULL OR apt.company IS NULL OR apt.company.id = :companyId) " +
+           "AND (:isActive IS NULL OR apt.isActive = :isActive) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' OR " +
+           "     LOWER(apt.templateName) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
+           "     LOWER(apt.templateCode) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "ORDER BY apt.priority DESC, apt.templateCode")
+    List<AttendancePolicyTemplate> findTemplatesWithFilters(@Param("tenantId") String tenantId,
+                                                            @Param("companyId") Long companyId,
+                                                            @Param("isActive") Boolean isActive,
+                                                            @Param("searchQuery") String searchQuery);
+
+    /**
+     * Clear isDefault flag for all templates in a tenant (except specified one).
+     */
+    @Query("UPDATE AttendancePolicyTemplate apt SET apt.isDefault = false " +
+           "WHERE apt.tenantId = :tenantId AND apt.id != :excludeId")
+    @org.springframework.data.jpa.repository.Modifying
+    void clearDefaultExcept(@Param("tenantId") String tenantId, @Param("excludeId") Long excludeId);
 }

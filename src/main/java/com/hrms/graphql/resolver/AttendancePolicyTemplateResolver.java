@@ -28,8 +28,9 @@ public class AttendancePolicyTemplateResolver {
     public List<AttendancePolicyTemplate> attendancePolicyTemplates(
             @Argument String tenantId,
             @Argument Long companyId,
-            @Argument Boolean isActive) {
-        return templateService.getTemplates(tenantId, companyId, isActive);
+            @Argument Boolean isActive,
+            @Argument String searchQuery) {
+        return templateService.getTemplates(tenantId, companyId, isActive, searchQuery);
     }
 
     @QueryMapping
@@ -62,5 +63,12 @@ public class AttendancePolicyTemplateResolver {
             @Argument String tenantId,
             @Argument Long id) {
         return templateService.deleteTemplate(tenantId, id);
+    }
+
+    @MutationMapping
+    public AttendancePolicyTemplate setDefaultAttendancePolicyTemplate(
+            @Argument String tenantId,
+            @Argument Long id) {
+        return templateService.setDefaultTemplate(tenantId, id);
     }
 }

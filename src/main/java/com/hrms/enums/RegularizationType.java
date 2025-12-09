@@ -8,5 +8,7 @@ public enum RegularizationType {
     WRONG_PUNCH,
     LATE_ENTRY,
     EARLY_EXIT,
-    ON_DUTY
+    ON_DUTY,
+    SYSTEM_ERROR,
+    OTHER
 }

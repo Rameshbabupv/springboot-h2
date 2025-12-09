@@ -28,8 +28,9 @@ public class HolidayResolver {
     public List<Holiday> holidays(@Argument String tenantId,
                                   @Argument Long companyId,
                                   @Argument Integer year,
-                                  @Argument Long locationId) {
-        return holidayService.getHolidays(tenantId, companyId, year, locationId);
+                                  @Argument Long locationId,
+                                  @Argument String searchQuery) {
+        return holidayService.getHolidays(tenantId, companyId, year, locationId, searchQuery);
     }
 
     @QueryMapping

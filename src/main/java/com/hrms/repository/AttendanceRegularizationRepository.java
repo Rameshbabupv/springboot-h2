@@ -136,4 +136,20 @@ public interface AttendanceRegularizationRepository extends JpaRepository<Attend
             @Param("companyId") Long companyId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * Find employee regularizations with optional status and date filters (Employee Portal).
+     */
+    @Query("SELECT ar FROM AttendanceRegularization ar " +
+           "WHERE ar.tenantId = :tenantId AND ar.employee.id = :employeeId " +
+           "AND (:status IS NULL OR ar.status = :status) " +
+           "AND (:startDate IS NULL OR ar.regularizationDate >= :startDate) " +
+           "AND (:endDate IS NULL OR ar.regularizationDate <= :endDate) " +
+           "ORDER BY ar.createdAt DESC")
+    List<AttendanceRegularization> findByTenantAndEmployeeWithFilters(
+            @Param("tenantId") String tenantId,
+            @Param("employeeId") Long employeeId,
+            @Param("status") ApprovalStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

@@ -3,6 +3,7 @@ package com.hrms.service.impl;
 import com.hrms.entity.Company;
 import com.hrms.entity.Shift;
 import com.hrms.entity.ShiftBreak;
+import com.hrms.enums.ShiftType;
 import com.hrms.graphql.input.ShiftBreakInput;
 import com.hrms.graphql.input.ShiftInput;
 import com.hrms.repository.CompanyRepository;
@@ -108,14 +109,10 @@ public class ShiftServiceImpl implements ShiftService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Shift> getShifts(String tenantId, Long companyId, Boolean isActive) {
-        if (companyId != null) {
-            if (isActive != null && isActive) {
-                return shiftRepository.findActiveByTenantAndCompany(tenantId, companyId);
-            }
-            return shiftRepository.findByTenantAndCompany(tenantId, companyId);
-        }
-        return shiftRepository.findByTenantIdOrderByDisplayOrderAscCodeAsc(tenantId);
+    public List<Shift> getShifts(String tenantId, Long companyId, Boolean isActive,
+                                  ShiftType shiftType, String searchQuery) {
+        // Use the flexible filter query for all cases
+        return shiftRepository.findShiftsWithFilters(tenantId, companyId, isActive, shiftType, searchQuery);
     }
 
     @Override

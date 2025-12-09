@@ -14,6 +14,8 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -66,15 +68,29 @@ public class AttendanceRegularizationResolver {
         return regularizationService.getPendingRegularizations(tenantId, companyId);
     }
 
+    /**
+     * Get employee's own regularization history (Employee Portal self-service).
+     */
+    @QueryMapping
+    public List<AttendanceRegularization> myRegularizations(@Argument String tenantId,
+                                                             @Argument Long employeeId,
+                                                             @Argument ApprovalStatus status,
+                                                             @Argument String dateFrom,
+                                                             @Argument String dateTo) {
+        LocalDate from = dateFrom != null ? LocalDate.parse(dateFrom, DateTimeFormatter.ISO_DATE) : null;
+        LocalDate to = dateTo != null ? LocalDate.parse(dateTo, DateTimeFormatter.ISO_DATE) : null;
+        return regularizationService.getEmployeeRegularizations(tenantId, employeeId, status, from, to);
+    }
+
     // Mutations
 
     @MutationMapping
     public AttendanceRegularization submitRegularization(@Argument String tenantId,
                                                           @Argument Long companyId,
                                                           @Argument RegularizationInput input) {
-        // Note: employeeId should come from authenticated user context
-        // For now, it can be derived from dailyAttendanceId or passed separately
-        return regularizationService.submitRegularization(tenantId, companyId, null, input);
+        // Use employeeId from input (self-service) or from authenticated user context
+        Long employeeId = input.getEmployeeId();
+        return regularizationService.submitRegularization(tenantId, companyId, employeeId, input);
     }
 
     @MutationMapping
@@ -90,5 +106,23 @@ public class AttendanceRegularizationResolver {
                                                           @Argument String reason) {
         // Note: approverId should come from authenticated user context
         return regularizationService.rejectRegularization(tenantId, id, null, reason);
+    }
+
+    @MutationMapping
+    public AttendanceRegularizationService.BulkRegularizationResult bulkApproveRegularizations(
+            @Argument String tenantId,
+            @Argument List<Long> ids,
+            @Argument String remarks) {
+        // Note: approverId should come from authenticated user context
+        return regularizationService.bulkApproveRegularizations(tenantId, ids, null, remarks);
+    }
+
+    @MutationMapping
+    public AttendanceRegularizationService.BulkRegularizationResult bulkRejectRegularizations(
+            @Argument String tenantId,
+            @Argument List<Long> ids,
+            @Argument String reason) {
+        // Note: approverId should come from authenticated user context
+        return regularizationService.bulkRejectRegularizations(tenantId, ids, null, reason);
     }
 }

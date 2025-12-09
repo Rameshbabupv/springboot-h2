@@ -1,9 +1,12 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.response.BulkEntryResult;
 import com.hrms.entity.Company;
 import com.hrms.entity.DailyAttendance;
 import com.hrms.entity.Employee;
+import com.hrms.entity.Shift;
 import com.hrms.enums.AttendanceStatus;
+import com.hrms.graphql.input.BulkAttendanceEntryInput;
 import com.hrms.service.DailyAttendanceService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Controller;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -40,6 +44,38 @@ public class DailyAttendanceResolver {
         return attendance.getCompany();
     }
 
+    @SchemaMapping(typeName = "DailyAttendance", field = "shift")
+    public Shift shift(DailyAttendance attendance) {
+        return attendance.getShift();
+    }
+
+    // Denormalized shift info for Employee Portal display
+    @SchemaMapping(typeName = "DailyAttendance", field = "shiftName")
+    public String shiftName(DailyAttendance attendance) {
+        return attendance.getShift() != null ? attendance.getShift().getName() : null;
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "shiftCode")
+    public String shiftCode(DailyAttendance attendance) {
+        return attendance.getShift() != null ? attendance.getShift().getCode() : null;
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "shiftStartTime")
+    public String shiftStartTime(DailyAttendance attendance) {
+        if (attendance.getShift() == null || attendance.getShift().getStartTime() == null) {
+            return null;
+        }
+        return attendance.getShift().getStartTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "shiftEndTime")
+    public String shiftEndTime(DailyAttendance attendance) {
+        if (attendance.getShift() == null || attendance.getShift().getEndTime() == null) {
+            return null;
+        }
+        return attendance.getShift().getEndTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
     // Queries
 
     @QueryMapping
@@ -48,9 +84,17 @@ public class DailyAttendanceResolver {
                                                   @Argument String dateFrom,
                                                   @Argument String dateTo,
                                                   @Argument Long employeeId,
-                                                  @Argument AttendanceStatus status) {
+                                                  @Argument AttendanceStatus status,
+                                                  @Argument Long locationId,
+                                                  @Argument Long departmentId,
+                                                  @Argument String searchQuery) {
         LocalDate from = parseDate(dateFrom);
         LocalDate to = parseDate(dateTo);
+        // Use enhanced filter method if any additional filters are provided
+        if (locationId != null || departmentId != null || (searchQuery != null && !searchQuery.isEmpty())) {
+            return attendanceService.getAttendanceWithFilters(tenantId, companyId, from, to,
+                    employeeId, status, locationId, departmentId, searchQuery);
+        }
         return attendanceService.getAttendance(tenantId, companyId, from, to, employeeId, status);
     }
 
@@ -81,13 +125,40 @@ public class DailyAttendanceResolver {
                                                   @Argument String date,
                                                   @Argument String punchIn,
                                                   @Argument String punchOut,
-                                                  @Argument AttendanceStatus status) {
+                                                  @Argument AttendanceStatus status,
+                                                  @Argument String remarks) {
         LocalDate localDate = parseDate(date);
-        OffsetDateTime punchInTime = punchIn != null ? parseDateTime(punchIn) : null;
-        OffsetDateTime punchOutTime = punchOut != null ? parseDateTime(punchOut) : null;
+        OffsetDateTime punchInTime = parseTime(localDate, punchIn);
+        OffsetDateTime punchOutTime = parseTime(localDate, punchOut);
         return attendanceService.manualAttendanceEntry(tenantId, companyId, employeeId,
-                localDate, punchInTime, punchOutTime, status);
+                localDate, punchInTime, punchOutTime, status, remarks);
     }
+
+    @MutationMapping
+    public BulkEntryResult bulkManualAttendanceEntry(@Argument String tenantId,
+                                                      @Argument Long companyId,
+                                                      @Argument List<BulkAttendanceEntryInput> entries) {
+        return attendanceService.bulkManualAttendanceEntry(tenantId, companyId, entries);
+    }
+
+    @MutationMapping
+    public DailyAttendance updateAttendanceStatus(@Argument String tenantId,
+                                                   @Argument Long attendanceId,
+                                                   @Argument AttendanceStatus newStatus,
+                                                   @Argument String reason) {
+        return attendanceService.updateAttendanceStatus(tenantId, attendanceId, newStatus, reason);
+    }
+
+    @MutationMapping
+    public DailyAttendanceService.BulkStatusUpdateResult bulkUpdateAttendanceStatus(
+            @Argument String tenantId,
+            @Argument List<Long> attendanceIds,
+            @Argument AttendanceStatus newStatus,
+            @Argument String reason) {
+        return attendanceService.bulkUpdateAttendanceStatus(tenantId, attendanceIds, newStatus, reason);
+    }
+
+    // Helper methods
 
     private LocalDate parseDate(String date) {
         if (date == null) return null;
@@ -97,5 +168,24 @@ public class DailyAttendanceResolver {
     private OffsetDateTime parseDateTime(String dateTime) {
         if (dateTime == null) return null;
         return OffsetDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    /**
+     * Parse time string (HH:mm) to OffsetDateTime for a given date.
+     * Handles both "HH:mm" format and full ISO datetime strings.
+     */
+    private OffsetDateTime parseTime(LocalDate date, String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) {
+            return null;
+        }
+        // Check if it's a full datetime string
+        if (timeStr.contains("T")) {
+            return parseDateTime(timeStr);
+        }
+        // Otherwise, treat as HH:mm format
+        String[] parts = timeStr.split(":");
+        int hour = Integer.parseInt(parts[0]);
+        int minute = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+        return date.atTime(hour, minute).atOffset(ZoneOffset.UTC);
     }
 }

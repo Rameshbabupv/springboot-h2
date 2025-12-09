@@ -1,6 +1,7 @@
 package com.hrms.service;
 
 import com.hrms.entity.Shift;
+import com.hrms.enums.ShiftType;
 import com.hrms.graphql.input.ShiftInput;
 
 import java.util.List;
@@ -27,9 +28,15 @@ public interface ShiftService {
     boolean deleteShift(String tenantId, Long id);
 
     /**
-     * Get shifts for a company.
+     * Get shifts with optional filtering.
+     * @param tenantId Tenant identifier (required)
+     * @param companyId Filter by company (optional)
+     * @param isActive Filter by active status (optional)
+     * @param shiftType Filter by shift type (optional)
+     * @param searchQuery Search by code or name (optional)
      */
-    List<Shift> getShifts(String tenantId, Long companyId, Boolean isActive);
+    List<Shift> getShifts(String tenantId, Long companyId, Boolean isActive,
+                          ShiftType shiftType, String searchQuery);
 
     /**
      * Get a single shift by ID.

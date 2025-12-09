@@ -141,4 +141,24 @@ public interface HolidayRepository extends JpaRepository<Holiday, Long> {
     @Query("SELECT COUNT(h) FROM Holiday h WHERE h.tenantId = :tenantId AND YEAR(h.date) = :year")
     long countByTenantAndYear(@Param("tenantId") String tenantId,
                                @Param("year") int year);
+
+    /**
+     * Find holidays with flexible filtering for frontend.
+     * Supports optional filters: companyId, year, locationId, searchQuery
+     */
+    @Query("SELECT DISTINCT h FROM Holiday h " +
+           "LEFT JOIN h.companyMappings cm " +
+           "LEFT JOIN h.locationMappings lm " +
+           "WHERE h.tenantId = :tenantId " +
+           "AND (:year IS NULL OR YEAR(h.date) = :year) " +
+           "AND (:companyId IS NULL OR cm IS NULL OR cm.company.id = :companyId) " +
+           "AND (:locationId IS NULL OR lm IS NULL OR lm.location.id = :locationId) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' OR " +
+           "     LOWER(h.name) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "ORDER BY h.date")
+    List<Holiday> findHolidaysWithFilters(@Param("tenantId") String tenantId,
+                                           @Param("companyId") Long companyId,
+                                           @Param("year") Integer year,
+                                           @Param("locationId") Long locationId,
+                                           @Param("searchQuery") String searchQuery);
 }

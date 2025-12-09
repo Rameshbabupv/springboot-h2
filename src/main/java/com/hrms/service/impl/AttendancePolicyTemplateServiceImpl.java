@@ -153,11 +153,9 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendancePolicyTemplate> getTemplates(String tenantId, Long companyId, Boolean isActive) {
-        if (companyId != null) {
-            return templateRepository.findActiveByTenantAndCompany(tenantId, companyId);
-        }
-        return templateRepository.findByTenantIdOrderByPriorityDesc(tenantId);
+    public List<AttendancePolicyTemplate> getTemplates(String tenantId, Long companyId, Boolean isActive, String searchQuery) {
+        // Use the flexible filter query for all cases
+        return templateRepository.findTemplatesWithFilters(tenantId, companyId, isActive, searchQuery);
     }
 
     @Override
@@ -197,6 +195,23 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
     @Transactional(readOnly = true)
     public Optional<AttendancePolicyTemplate> findByCode(String tenantId, String code) {
         return templateRepository.findByTenantAndCode(tenantId, code);
+    }
+
+    @Override
+    public AttendancePolicyTemplate setDefaultTemplate(String tenantId, Long id) {
+        AttendancePolicyTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Template not found: " + id));
+
+        if (!template.getTenantId().equals(tenantId)) {
+            throw new IllegalArgumentException("Tenant mismatch");
+        }
+
+        // Clear default flag from all other templates in this tenant
+        templateRepository.clearDefaultExcept(tenantId, id);
+
+        // Set this template as default
+        template.setIsDefault(true);
+        return templateRepository.save(template);
     }
 
     @SuppressWarnings("unchecked")

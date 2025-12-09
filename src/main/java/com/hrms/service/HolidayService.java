@@ -34,8 +34,13 @@ public interface HolidayService {
 
     /**
      * Get holidays with optional filters.
+     * @param tenantId Tenant identifier (required)
+     * @param companyId Filter by company (optional)
+     * @param year Filter by year (optional)
+     * @param locationId Filter by location (optional)
+     * @param searchQuery Search by holiday name (optional)
      */
-    List<Holiday> getHolidays(String tenantId, Long companyId, Integer year, Long locationId);
+    List<Holiday> getHolidays(String tenantId, Long companyId, Integer year, Long locationId, String searchQuery);
 
     /**
      * Get a single holiday by ID.

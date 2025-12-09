@@ -88,4 +88,22 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
      * Find all shifts for tenant (admin view).
      */
     List<Shift> findByTenantIdOrderByDisplayOrderAscCodeAsc(String tenantId);
+
+    /**
+     * Find shifts with flexible filtering for frontend.
+     * Supports optional filters: companyId, isActive, shiftType, searchQuery
+     */
+    @Query("SELECT s FROM Shift s WHERE s.tenantId = :tenantId " +
+           "AND (:companyId IS NULL OR s.company IS NULL OR s.company.id = :companyId) " +
+           "AND (:isActive IS NULL OR s.isActive = :isActive) " +
+           "AND (:shiftType IS NULL OR s.shiftType = :shiftType) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' OR " +
+           "     LOWER(s.code) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
+           "     LOWER(s.name) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "ORDER BY s.displayOrder, s.code")
+    List<Shift> findShiftsWithFilters(@Param("tenantId") String tenantId,
+                                       @Param("companyId") Long companyId,
+                                       @Param("isActive") Boolean isActive,
+                                       @Param("shiftType") ShiftType shiftType,
+                                       @Param("searchQuery") String searchQuery);
 }

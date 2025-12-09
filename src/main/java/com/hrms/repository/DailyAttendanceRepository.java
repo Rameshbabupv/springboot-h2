@@ -184,4 +184,46 @@ public interface DailyAttendanceRepository extends JpaRepository<DailyAttendance
             @Param("tenantId") String tenantId,
             @Param("employeeId") Long employeeId,
             @Param("date") LocalDate date);
+
+    /**
+     * Find attendance for multiple employees on a specific date.
+     * Used for attendance capture grid.
+     */
+    @Query("SELECT da FROM DailyAttendance da " +
+           "WHERE da.tenantId = :tenantId AND da.employee.id IN :employeeIds " +
+           "AND da.attendanceDate = :date")
+    List<DailyAttendance> findByTenantAndEmployeeIdsAndDate(
+            @Param("tenantId") String tenantId,
+            @Param("employeeIds") List<Long> employeeIds,
+            @Param("date") LocalDate date);
+
+    /**
+     * Find attendance with flexible filtering for Time Center.
+     * Supports: companyId, date range, employeeId, status, locationId, departmentId, searchQuery.
+     */
+    @Query("SELECT da FROM DailyAttendance da " +
+           "JOIN FETCH da.employee e " +
+           "LEFT JOIN FETCH e.department " +
+           "LEFT JOIN FETCH e.location " +
+           "WHERE da.tenantId = :tenantId " +
+           "AND da.company.id = :companyId " +
+           "AND da.attendanceDate BETWEEN :dateFrom AND :dateTo " +
+           "AND (:employeeId IS NULL OR da.employee.id = :employeeId) " +
+           "AND (:status IS NULL OR da.status = :status) " +
+           "AND (:locationId IS NULL OR e.location.id = :locationId) " +
+           "AND (:departmentId IS NULL OR e.department.id = :departmentId) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' OR " +
+           "     LOWER(e.employeeName) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
+           "     LOWER(e.empId) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "ORDER BY da.attendanceDate, e.empId")
+    List<DailyAttendance> findAttendanceWithFilters(
+            @Param("tenantId") String tenantId,
+            @Param("companyId") Long companyId,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo,
+            @Param("employeeId") Long employeeId,
+            @Param("status") AttendanceStatus status,
+            @Param("locationId") Long locationId,
+            @Param("departmentId") Long departmentId,
+            @Param("searchQuery") String searchQuery);
 }

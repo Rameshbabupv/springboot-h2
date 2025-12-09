@@ -153,6 +153,13 @@ type DailyAttendance {
   remarks: String
   createdAt: String
   updatedAt: String
+  # Denormalized shift info for Employee Portal display
+  shiftName: String
+  shiftCode: String
+  shiftStartTime: String
+  shiftEndTime: String
+  # Regularization info
+  pendingRegularization: AttendanceRegularization
 }
 
 # AttendanceRegularization - Attendance correction requests
@@ -278,12 +285,99 @@ input PunchLogInput {
 }
 
 input RegularizationInput {
+  employeeId: ID                         # For self-service - employee's own ID
   dailyAttendanceId: ID
   regularizationType: RegularizationType!
   regularizationDate: String!
+  missedPunchType: MissedPunchType       # Which punch was missed (IN/OUT/BOTH)
+  originalPunchIn: String                # For reference
+  originalPunchOut: String
   regularizedPunchIn: String
   regularizedPunchOut: String
   reason: String!
+}
+
+# ====================
+# ATTENDANCE CAPTURE TYPES
+# ====================
+
+# Bulk Manual Entry Types
+input BulkAttendanceEntryInput {
+  employeeId: ID!
+  date: String!
+  punchIn: String
+  punchOut: String
+  status: AttendanceStatus!
+  remarks: String
+}
+
+type BulkEntryResult {
+  successCount: Int!
+  failedCount: Int!
+  errors: [BulkEntryError]
+}
+
+type BulkEntryError {
+  employeeId: ID!
+  date: String!
+  message: String!
+}
+
+# Excel Import Types
+input ExcelRowInput {
+  rowNumber: Int!
+  employeeId: String!          # Employee code (e.g., "EMP001")
+  date: String!                # DD/MM/YYYY format
+  inTime: String               # HH:MM (24h)
+  outTime: String              # HH:MM (24h)
+  status: String!              # P, A, HD, WO, H, L, OD
+  remarks: String
+}
+
+type ValidationResult {
+  totalRows: Int!
+  validRecords: Int!
+  warnings: [ValidationIssue]
+  errors: [ValidationIssue]
+}
+
+type ValidationIssue {
+  rowNumber: Int!
+  column: String!
+  value: String
+  message: String!
+  severity: IssueSeverity!
+}
+
+type ImportResult {
+  importedCount: Int!
+  skippedCount: Int!
+  errors: [ImportError]
+  importLogId: ID
+}
+
+type ImportError {
+  rowNumber: Int!
+  employeeId: String
+  message: String!
+}
+
+# Employee Search Types for Attendance
+type EmployeeBasic {
+  id: ID!
+  employeeCode: String!
+  fullName: String!
+  designation: String
+  department: String
+}
+
+type EmployeeAttendanceRow {
+  employeeId: ID!
+  employeeCode: String!
+  employeeName: String!
+  designation: String
+  department: String
+  existingAttendance: DailyAttendance   # null if no entry for date
 }
 
 # ====================
@@ -293,30 +387,42 @@ input RegularizationInput {
 
 extend type Query {
   # Shifts
-  shifts(tenantId: String!, companyId: ID, isActive: Boolean): [Shift]
+  shifts(tenantId: String!, companyId: ID, isActive: Boolean, shiftType: ShiftType, searchQuery: String): [Shift]
   shift(tenantId: String!, id: ID!): Shift
 
   # Holidays
-  holidays(tenantId: String!, companyId: ID, year: Int, locationId: ID): [Holiday]
+  holidays(tenantId: String!, companyId: ID, year: Int, locationId: ID, searchQuery: String): [Holiday]
   holiday(tenantId: String!, id: ID!): Holiday
 
   # Attendance Policy Templates
-  attendancePolicyTemplates(tenantId: String!, companyId: ID, isActive: Boolean): [AttendancePolicyTemplate]
+  attendancePolicyTemplates(tenantId: String!, companyId: ID, isActive: Boolean, searchQuery: String): [AttendancePolicyTemplate]
   attendancePolicyTemplate(tenantId: String!, id: ID!): AttendancePolicyTemplate
 
   # Punch Logs
   punchLogs(tenantId: String!, companyId: ID, dateFrom: String!, dateTo: String!, employeeId: ID, status: PunchStatus): [PunchLog]
 
-  # Daily Attendance
-  dailyAttendance(tenantId: String!, companyId: ID!, dateFrom: String!, dateTo: String!, employeeId: ID, status: AttendanceStatus): [DailyAttendance]
+  # Daily Attendance (with Time Center filters)
+  dailyAttendance(tenantId: String!, companyId: ID!, dateFrom: String!, dateTo: String!, employeeId: ID, status: AttendanceStatus, locationId: ID, departmentId: ID, searchQuery: String): [DailyAttendance]
   employeeAttendance(tenantId: String!, employeeId: ID!, dateFrom: String!, dateTo: String!): [DailyAttendance]
 
   # Regularizations
   regularizations(tenantId: String!, companyId: ID, status: ApprovalStatus, employeeId: ID): [AttendanceRegularization]
   pendingRegularizations(tenantId: String!, companyId: ID!): [AttendanceRegularization]
 
+  # Employee Self-Service - Regularization History
+  myRegularizations(tenantId: String!, employeeId: ID!, status: ApprovalStatus, dateFrom: String, dateTo: String): [AttendanceRegularization]
+
+  # Attendance Capture - Employee Lookup
+  searchEmployeesForAttendance(tenantId: String!, companyId: ID!, locationId: ID, departmentId: ID, searchText: String, limit: Int): [EmployeeBasic]
+  employeesForAttendanceGrid(tenantId: String!, companyId: ID!, locationId: ID, departmentId: ID, date: String!): [EmployeeAttendanceRow]
+
   # Biometric Sync
   supabaseRecordCount: Int
+
+  # Attendance Import History
+  getAttendanceImportHistory(tenantId: String!, companyId: ID!, limit: Int, offset: Int, status: ImportStatus, fromDate: String, toDate: String): ImportLogPage!
+  getAttendanceImportDetails(tenantId: String!, importId: ID!): AttendanceImportLog
+  getImportErrors(tenantId: String!, importId: ID!, limit: Int, offset: Int): [AttendanceImportErrorDetail!]!
 }
 
 # ====================
@@ -340,6 +446,7 @@ extend type Mutation {
   createAttendancePolicyTemplate(tenantId: String!, companyId: ID, input: AttendancePolicyTemplateInput!): AttendancePolicyTemplate
   updateAttendancePolicyTemplate(tenantId: String!, id: ID!, input: AttendancePolicyTemplateInput!): AttendancePolicyTemplate
   deleteAttendancePolicyTemplate(tenantId: String!, id: ID!): Boolean
+  setDefaultAttendancePolicyTemplate(tenantId: String!, id: ID!): AttendancePolicyTemplate
 
   # Punch Logs
   recordPunch(tenantId: String!, companyId: ID!, input: PunchLogInput!): PunchLog
@@ -348,16 +455,118 @@ extend type Mutation {
 
   # Daily Attendance
   processAttendance(tenantId: String!, companyId: ID!, date: String!): Int
-  manualAttendanceEntry(tenantId: String!, companyId: ID!, employeeId: ID!, date: String!, punchIn: String, punchOut: String, status: AttendanceStatus): DailyAttendance
+  manualAttendanceEntry(tenantId: String!, companyId: ID!, employeeId: ID!, date: String!, punchIn: String, punchOut: String, status: AttendanceStatus!, remarks: String): DailyAttendance
+
+  # Attendance Capture - Bulk Manual Entry
+  bulkManualAttendanceEntry(tenantId: String!, companyId: ID!, entries: [BulkAttendanceEntryInput]!): BulkEntryResult
+
+  # Attendance Capture - Excel Import
+  validateAttendanceImport(tenantId: String!, companyId: ID!, rows: [ExcelRowInput]!): ValidationResult
+  importAttendanceFromExcel(tenantId: String!, companyId: ID!, rows: [ExcelRowInput]!, overwriteExisting: Boolean, fileName: String, fileSizeBytes: Int, importedByUserId: ID): ImportResult
 
   # Regularizations
   submitRegularization(tenantId: String!, companyId: ID!, input: RegularizationInput!): AttendanceRegularization
   approveRegularization(tenantId: String!, id: ID!): AttendanceRegularization
   rejectRegularization(tenantId: String!, id: ID!, reason: String!): AttendanceRegularization
 
+  # Bulk Regularizations (Time Center)
+  bulkApproveRegularizations(tenantId: String!, ids: [ID!]!, remarks: String): BulkRegularizationResult
+  bulkRejectRegularizations(tenantId: String!, ids: [ID!]!, reason: String!): BulkRegularizationResult
+
+  # Time Center - Status Updates
+  updateAttendanceStatus(tenantId: String!, attendanceId: ID!, newStatus: AttendanceStatus!, reason: String!): DailyAttendance
+  bulkUpdateAttendanceStatus(tenantId: String!, attendanceIds: [ID!]!, newStatus: AttendanceStatus!, reason: String!): BulkStatusUpdateResult
+
   # Biometric Sync
   syncBiometricData(tenantId: String!, companyId: ID): BiometricSyncResult
   testSupabaseConnection: Boolean
+}
+
+# ====================
+# TIME CENTER RESULT TYPES
+# ====================
+
+# Result type for bulk status update operation
+type BulkStatusUpdateResult {
+  successCount: Int!
+  failedCount: Int!
+  results: [StatusUpdateResultItem]
+}
+
+type StatusUpdateResultItem {
+  attendanceId: ID
+  status: String
+  error: String
+}
+
+# Result type for bulk regularization operations
+type BulkRegularizationResult {
+  successCount: Int!
+  failedCount: Int!
+  results: [RegularizationResultItem]
+}
+
+type RegularizationResultItem {
+  id: ID
+  status: String
+  error: String
+}
+
+# ====================
+# ATTENDANCE IMPORT HISTORY TYPES
+# ====================
+
+# Import history log entry
+type AttendanceImportLog {
+  id: ID!
+  tenantId: String!
+  company: Company
+  fileName: String!
+  fileSizeBytes: Long
+  totalRows: Int!
+  importedCount: Int!
+  skippedCount: Int!
+  errorCount: Int!
+  status: ImportStatus!
+  errorMessage: String
+  startedAt: String
+  completedAt: String
+  processingTimeMs: Long
+  importedBy: UserAccount
+  createdAt: String!
+}
+
+# Import log page with pagination
+type ImportLogPage {
+  items: [AttendanceImportLog!]!
+  totalCount: Long!
+  pageInfo: ImportPageInfo!
+}
+
+type ImportPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  currentPage: Int!
+  totalPages: Int!
+}
+
+# Import error detail
+type AttendanceImportErrorDetail {
+  id: ID!
+  rowNumber: Int!
+  employeeId: String
+  columnName: String
+  errorType: String!
+  errorMessage: String!
+}
+
+# Import status enum
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  PARTIAL
+  FAILED
 }
 
 # Biometric sync result type
@@ -480,6 +689,7 @@ enum AttendanceStatus {
   HALF_DAY
   WEEKLY_OFF
   HALF_ABSENT
+  ON_DUTY
 }
 
 enum MissedPunchType {
@@ -495,6 +705,13 @@ enum RegularizationType {
   LATE_ENTRY
   EARLY_EXIT
   ON_DUTY
+  SYSTEM_ERROR
+  OTHER
+}
+
+enum IssueSeverity {
+  WARNING
+  ERROR
 }
 
 enum ApprovalStatus {

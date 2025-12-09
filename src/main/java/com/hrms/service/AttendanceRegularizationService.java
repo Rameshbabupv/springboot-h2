@@ -52,6 +52,13 @@ public interface AttendanceRegularizationService {
                                                                LocalDate startDate, LocalDate endDate);
 
     /**
+     * Get regularizations for an employee with status filter and date range (Employee Portal).
+     */
+    List<AttendanceRegularization> getEmployeeRegularizations(String tenantId, Long employeeId,
+                                                               ApprovalStatus status,
+                                                               LocalDate startDate, LocalDate endDate);
+
+    /**
      * Count pending regularizations for employee.
      */
     long countPendingByEmployee(String tenantId, Long employeeId);
@@ -79,5 +86,45 @@ public interface AttendanceRegularizationService {
         long pending,
         long approved,
         long rejected
+    ) {}
+
+    /**
+     * Bulk approve regularization requests.
+     * @param tenantId Tenant identifier
+     * @param ids List of regularization IDs to approve
+     * @param approverId User performing the approval
+     * @param remarks Optional remarks for the approval
+     * @return Bulk operation result
+     */
+    BulkRegularizationResult bulkApproveRegularizations(String tenantId, List<Long> ids,
+                                                         Long approverId, String remarks);
+
+    /**
+     * Bulk reject regularization requests.
+     * @param tenantId Tenant identifier
+     * @param ids List of regularization IDs to reject
+     * @param approverId User performing the rejection
+     * @param reason Reason for rejection (required)
+     * @return Bulk operation result
+     */
+    BulkRegularizationResult bulkRejectRegularizations(String tenantId, List<Long> ids,
+                                                        Long approverId, String reason);
+
+    /**
+     * Result DTO for bulk regularization operations.
+     */
+    record BulkRegularizationResult(
+        int successCount,
+        int failedCount,
+        List<RegularizationResultItem> results
+    ) {}
+
+    /**
+     * Individual result item for bulk regularization.
+     */
+    record RegularizationResultItem(
+        Long id,
+        String status,
+        String error
     ) {}
 }

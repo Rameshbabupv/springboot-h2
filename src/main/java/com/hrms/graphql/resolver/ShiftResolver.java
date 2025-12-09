@@ -1,6 +1,7 @@
 package com.hrms.graphql.resolver;
 
 import com.hrms.entity.Shift;
+import com.hrms.enums.ShiftType;
 import com.hrms.graphql.input.ShiftInput;
 import com.hrms.service.ShiftService;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -27,8 +28,10 @@ public class ShiftResolver {
     @QueryMapping
     public List<Shift> shifts(@Argument String tenantId,
                               @Argument Long companyId,
-                              @Argument Boolean isActive) {
-        return shiftService.getShifts(tenantId, companyId, isActive);
+                              @Argument Boolean isActive,
+                              @Argument ShiftType shiftType,
+                              @Argument String searchQuery) {
+        return shiftService.getShifts(tenantId, companyId, isActive, shiftType, searchQuery);
     }
 
     @QueryMapping
