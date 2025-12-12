@@ -164,7 +164,7 @@ public class HolidayServiceImpl implements HolidayService {
     private void mapInputToEntity(HolidayInput input, Holiday holiday) {
         holiday.setDate(parseDate(input.getDate()));
         holiday.setName(input.getName());
-        holiday.setHolidayType(HolidayType.valueOf(input.getHolidayType()));
+        holiday.setHolidayType(parseHolidayType(input.getHolidayType()));
         holiday.setCategory(input.getCategory());
         holiday.setIsMandatory(input.getIsMandatory() != null ? input.getIsMandatory() : true);
         holiday.setIsNiActCompliant(input.getIsNiActCompliant() != null ? input.getIsNiActCompliant() : false);
@@ -175,5 +175,27 @@ public class HolidayServiceImpl implements HolidayService {
 
     private LocalDate parseDate(String date) {
         return LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
+    }
+
+    /**
+     * Parse holiday type from string input.
+     * Handles both formats: "TYPE_A" and "A"
+     */
+    private HolidayType parseHolidayType(String typeString) {
+        if (typeString == null || typeString.isBlank()) {
+            throw new IllegalArgumentException("Holiday type cannot be null or empty");
+        }
+
+        // Strip "TYPE_" prefix if present (frontend sends "TYPE_A", backend expects "A")
+        String normalizedType = typeString.toUpperCase().replace("TYPE_", "");
+
+        try {
+            return HolidayType.valueOf(normalizedType);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                String.format("Invalid holiday type: '%s'. Valid values are: A, B, C, D (or TYPE_A, TYPE_B, TYPE_C, TYPE_D)",
+                typeString)
+            );
+        }
     }
 }
