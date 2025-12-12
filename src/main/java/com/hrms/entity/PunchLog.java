@@ -78,7 +78,7 @@ public class PunchLog {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "punch_source", nullable = false, length = 20)
+    @Column(name = "punch_source", nullable = false, length = 30)  // ADR-002: Increased for new enum values
     private PunchSource punchSource;
 
     @NotNull
@@ -93,6 +93,19 @@ public class PunchLog {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_data", columnDefinition = "jsonb")
     private Map<String, Object> rawData;
+
+    /**
+     * SHA256 hash for idempotent deduplication (ADR-002).
+     * - SUPABASE: SHA256 from Supabase biometric_data.id
+     * - USER_PORTAL, REST_API, IMPORT, MOBILE: Calculated from request payload
+     * - HR_MANUAL: NULL (no content hash for manual entries)
+     * - LEGACY: NULL (pre-ADR-002 data)
+     * 
+     * Database constraint: UNIQUE WHERE sha256 IS NOT NULL
+     * @since 2.0 (ADR-002)
+     */
+    @Column(name = "sha256", length = 64)
+    private String sha256;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

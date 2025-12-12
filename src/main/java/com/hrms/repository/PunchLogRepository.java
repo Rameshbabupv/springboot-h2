@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for PunchLog entity.
@@ -159,4 +160,61 @@ public interface PunchLogRepository extends JpaRepository<PunchLog, Long> {
      * Count punches by employee ID and time range (derived query).
      */
     long countByEmployeeIdAndPunchTimeBetween(Long employeeId, OffsetDateTime start, OffsetDateTime end);
+
+    // ========== ADR-002: SHA256-Based Deduplication Methods ==========
+
+    /**
+     * Check if punch with SHA256 hash already exists (PRIMARY deduplication per ADR-002).
+     * O(1) lookup via unique index.
+     * 
+     * @param sha256 SHA256 hash
+     * @return true if exists, false otherwise
+     * @since 2.0 (ADR-002)
+     */
+    boolean existsBySha256(String sha256);
+
+    /**
+     * Find punch by SHA256 hash.
+     * Used for diagnostics and debugging.
+     *
+     * @param sha256 SHA256 hash
+     * @return Optional of PunchLog
+     * @since 2.0 (ADR-002)
+     */
+    Optional<PunchLog> findBySha256(String sha256);
+
+    /**
+     * Find all punches from a specific source within time range.
+     * Used for source-specific analytics.
+     *
+     * @param tenantId Tenant ID
+     * @param source Punch source
+     * @param startTime Start of range
+     * @param endTime End of range
+     * @return List of punches
+     * @since 2.0 (ADR-002)
+     */
+    @Query("SELECT pl FROM PunchLog pl WHERE pl.tenantId = :tenantId " +
+           "AND pl.punchSource = :source " +
+           "AND pl.punchTime BETWEEN :startTime AND :endTime " +
+           "ORDER BY pl.punchTime")
+    List<PunchLog> findByTenantAndSourceAndTime(
+            @Param("tenantId") String tenantId,
+            @Param("source") PunchSource source,
+            @Param("startTime") OffsetDateTime startTime,
+            @Param("endTime") OffsetDateTime endTime);
+
+    /**
+     * Count punches by source for monitoring.
+     *
+     * @param tenantId Tenant ID
+     * @param source Punch source
+     * @return Count
+     * @since 2.0 (ADR-002)
+     */
+    @Query("SELECT COUNT(pl) FROM PunchLog pl WHERE pl.tenantId = :tenantId " +
+           "AND pl.punchSource = :source")
+    long countByTenantAndSource(
+            @Param("tenantId") String tenantId,
+            @Param("source") PunchSource source);
 }
