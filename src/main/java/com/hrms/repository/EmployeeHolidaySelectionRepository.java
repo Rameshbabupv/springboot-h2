@@ -48,13 +48,17 @@ public interface EmployeeHolidaySelectionRepository extends JpaRepository<Employ
 
     /**
      * Get submission timestamp for a financial year (if submitted).
+     * Returns the most recent submission timestamp (all selections should have same timestamp).
+     * Uses LIMIT 1 to avoid NonUniqueResultException when multiple selections exist.
      */
-    @Query("SELECT e.submittedAt FROM EmployeeHolidaySelection e " +
-           "WHERE e.tenantId = :tenantId " +
-           "AND e.employee.id = :employeeId " +
-           "AND e.financialYear = :financialYear " +
-           "AND e.isSubmitted = true " +
-           "ORDER BY e.submittedAt DESC")
+    @Query(value = "SELECT e.submitted_at FROM employee_holiday_selections e " +
+                   "WHERE e.tenant_id = :tenantId " +
+                   "AND e.employee_id = :employeeId " +
+                   "AND e.financial_year = :financialYear " +
+                   "AND e.is_submitted = true " +
+                   "ORDER BY e.submitted_at DESC " +
+                   "LIMIT 1",
+           nativeQuery = true)
     Optional<java.time.LocalDateTime> findSubmittedAtByTenantAndEmployeeAndFinancialYear(
             @Param("tenantId") String tenantId,
             @Param("employeeId") Long employeeId,
