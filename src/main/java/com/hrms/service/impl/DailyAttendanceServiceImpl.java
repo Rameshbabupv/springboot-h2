@@ -310,13 +310,11 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
     public List<DailyAttendance> getAttendance(String tenantId, Long companyId,
                                                 LocalDate dateFrom, LocalDate dateTo,
                                                 Long employeeId, AttendanceStatus status) {
-        if (employeeId != null) {
-            return attendanceRepository.findByTenantAndEmployeeAndDateRange(tenantId, employeeId, dateFrom, dateTo);
-        }
-        if (status != null) {
-            return attendanceRepository.findByTenantAndCompanyAndDateAndStatus(tenantId, companyId, dateFrom, status);
-        }
-        return attendanceRepository.findByTenantAndCompanyAndDate(tenantId, companyId, dateFrom);
+        // Use findAttendanceWithFilters for proper date range support (BETWEEN)
+        // This fixes the bug where only dateFrom was used, ignoring dateTo
+        return attendanceRepository.findAttendanceWithFilters(
+                tenantId, companyId, dateFrom, dateTo,
+                employeeId, status, null, null, null);
     }
 
     @Override
@@ -353,6 +351,75 @@ public class DailyAttendanceServiceImpl implements DailyAttendanceService {
         }
 
         log.info("Attendance {} status updated from {} to {} - Reason: {}", attendanceId, oldStatus, newStatus, reason);
+        return attendanceRepository.save(attendance);
+    }
+
+
+    @Override
+    public DailyAttendance updateAttendanceRecord(String tenantId, Long attendanceId,
+                                                   String firstPunchIn, String lastPunchOut,
+                                                   AttendanceStatus status, String remarks) {
+        DailyAttendance attendance = attendanceRepository.findById(attendanceId)
+                .orElseThrow(() -> new IllegalArgumentException("Attendance record not found: " + attendanceId));
+
+        if (!attendance.getTenantId().equals(tenantId)) {
+            throw new IllegalArgumentException("Tenant mismatch");
+        }
+
+        LocalDate attendanceDate = attendance.getAttendanceDate();
+
+        // Update firstPunchIn if provided
+        if (firstPunchIn != null && !firstPunchIn.isEmpty()) {
+            OffsetDateTime punchInTime = parseTimeToDateTime(attendanceDate, firstPunchIn);
+            attendance.setFirstPunchIn(punchInTime);
+        }
+
+        // Update lastPunchOut if provided
+        if (lastPunchOut != null && !lastPunchOut.isEmpty()) {
+            OffsetDateTime punchOutTime = parseTimeToDateTime(attendanceDate, lastPunchOut);
+            attendance.setLastPunchOut(punchOutTime);
+        }
+
+        // Validate IN time is before OUT time
+        if (attendance.getFirstPunchIn() != null && attendance.getLastPunchOut() != null) {
+            if (attendance.getFirstPunchIn().isAfter(attendance.getLastPunchOut())) {
+                throw new IllegalArgumentException("IN time cannot be after OUT time");
+            }
+        }
+
+        // Update status if provided
+        if (status != null) {
+            attendance.setStatus(status);
+        }
+
+        // Update remarks if provided
+        if (remarks != null) {
+            attendance.setRemarks(remarks);
+        }
+
+        // Recalculate hours worked
+        if (attendance.getFirstPunchIn() != null && attendance.getLastPunchOut() != null) {
+            attendance.calculateHoursWorked();
+            // Update missed punch flags
+            attendance.setHasMissedPunch(false);
+            attendance.setMissedPunchType(null);
+        } else if (attendance.getFirstPunchIn() == null && attendance.getLastPunchOut() == null) {
+            // Both null - set hours to 0
+            attendance.setTotalHoursWorked(java.math.BigDecimal.ZERO);
+            attendance.setHasMissedPunch(false);
+            attendance.setMissedPunchType(null);
+        } else {
+            // One is missing
+            attendance.setHasMissedPunch(true);
+            if (attendance.getFirstPunchIn() == null) {
+                attendance.setMissedPunchType(com.hrms.enums.MissedPunchType.MISSING_IN);
+            } else {
+                attendance.setMissedPunchType(com.hrms.enums.MissedPunchType.MISSING_OUT);
+            }
+        }
+
+        log.info("Attendance record {} updated - IN: {}, OUT: {}, Status: {}, Remarks: {}",
+                attendanceId, firstPunchIn, lastPunchOut, status, remarks);
         return attendanceRepository.save(attendance);
     }
 

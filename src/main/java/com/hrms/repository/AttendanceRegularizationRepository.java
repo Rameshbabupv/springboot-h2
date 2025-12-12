@@ -152,4 +152,81 @@ public interface AttendanceRegularizationRepository extends JpaRepository<Attend
             @Param("status") ApprovalStatus status,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * Find regularizations with enhanced Time Center filters.
+     * Supports filtering by company, status, employee, date range, location, department, and search.
+     */
+    @Query(value = "SELECT ar.* FROM attendance_regularizations ar " +
+           "JOIN employees e ON e.id = ar.employee_id " +
+           "WHERE ar.tenant_id = :tenantId " +
+           "AND (:companyId IS NULL OR ar.company_id = CAST(:companyId AS BIGINT)) " +
+           "AND (:status IS NULL OR ar.status = :status) " +
+           "AND (:employeeId IS NULL OR ar.employee_id = CAST(:employeeId AS BIGINT)) " +
+           "AND (CAST(:dateFrom AS DATE) IS NULL OR ar.regularization_date >= CAST(:dateFrom AS DATE)) " +
+           "AND (CAST(:dateTo AS DATE) IS NULL OR ar.regularization_date <= CAST(:dateTo AS DATE)) " +
+           "AND (:locationId IS NULL OR e.location_id = CAST(:locationId AS BIGINT)) " +
+           "AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS BIGINT)) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' " +
+           "     OR LOWER(e.employee_name) LIKE LOWER(CONCAT('%', :searchQuery, '%')) " +
+           "     OR LOWER(e.emp_id) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "ORDER BY ar.created_at DESC", nativeQuery = true)
+    List<AttendanceRegularization> findWithFilters(
+            @Param("tenantId") String tenantId,
+            @Param("companyId") Long companyId,
+            @Param("status") String status,
+            @Param("employeeId") Long employeeId,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo,
+            @Param("locationId") Long locationId,
+            @Param("departmentId") Long departmentId,
+            @Param("searchQuery") String searchQuery);
+
+    /**
+     * Find regularizations with role-based filtering.
+     * - ADMIN: sees all regularizations
+     * - MANAGER: sees only direct reportees' regularizations
+     * - EMPLOYEE: sees only their own regularizations
+     *
+     * @param tenantId Tenant identifier
+     * @param companyId Optional company filter
+     * @param status Optional status filter
+     * @param dateFrom Optional start date filter
+     * @param dateTo Optional end date filter
+     * @param locationId Optional location filter
+     * @param departmentId Optional department filter
+     * @param searchQuery Optional search by employee name/code
+     * @param userRole User's role (ADMIN, MANAGER, EMPLOYEE)
+     * @param userEmployeeId User's employee ID (for MANAGER/EMPLOYEE filtering)
+     * @return Filtered list of regularizations based on role
+     */
+    @Query(value = "SELECT ar.* FROM attendance_regularizations ar " +
+           "JOIN employees e ON e.id = ar.employee_id " +
+           "WHERE ar.tenant_id = :tenantId " +
+           "AND (:companyId IS NULL OR ar.company_id = CAST(:companyId AS BIGINT)) " +
+           "AND (:status IS NULL OR ar.status = :status) " +
+           "AND (CAST(:dateFrom AS DATE) IS NULL OR ar.regularization_date >= CAST(:dateFrom AS DATE)) " +
+           "AND (CAST(:dateTo AS DATE) IS NULL OR ar.regularization_date <= CAST(:dateTo AS DATE)) " +
+           "AND (:locationId IS NULL OR e.location_id = CAST(:locationId AS BIGINT)) " +
+           "AND (:departmentId IS NULL OR e.department_id = CAST(:departmentId AS BIGINT)) " +
+           "AND (:searchQuery IS NULL OR :searchQuery = '' " +
+           "     OR LOWER(e.employee_name) LIKE LOWER(CONCAT('%', :searchQuery, '%')) " +
+           "     OR LOWER(e.emp_id) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
+           "AND (" +
+           "     :userRole = 'ADMIN' " +  // ADMIN sees all
+           "     OR (:userRole = 'MANAGER' AND e.reporting_manager_id = CAST(:userEmployeeId AS BIGINT)) " +  // MANAGER sees reportees
+           "     OR ar.employee_id = CAST(:userEmployeeId AS BIGINT) " +  // EMPLOYEE sees own
+           ") " +
+           "ORDER BY ar.created_at DESC", nativeQuery = true)
+    List<AttendanceRegularization> findWithFiltersAndRole(
+            @Param("tenantId") String tenantId,
+            @Param("companyId") Long companyId,
+            @Param("status") String status,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo,
+            @Param("locationId") Long locationId,
+            @Param("departmentId") Long departmentId,
+            @Param("searchQuery") String searchQuery,
+            @Param("userRole") String userRole,
+            @Param("userEmployeeId") Long userEmployeeId);
 }

@@ -21,8 +21,12 @@ public interface AttendanceRegularizationService {
 
     /**
      * Approve a regularization (updates daily_attendance).
+     * @param tenantId Tenant identifier
+     * @param id Regularization request ID
+     * @param approverId User performing the approval
+     * @param remarks Optional approver remarks
      */
-    AttendanceRegularization approveRegularization(String tenantId, Long id, Long approverId);
+    AttendanceRegularization approveRegularization(String tenantId, Long id, Long approverId, String remarks);
 
     /**
      * Reject a regularization.
@@ -39,6 +43,48 @@ public interface AttendanceRegularizationService {
      */
     List<AttendanceRegularization> getRegularizations(String tenantId, Long companyId,
                                                        ApprovalStatus status, Long employeeId);
+
+    /**
+     * Get regularizations with enhanced Time Center filters.
+     * @param tenantId Tenant identifier
+     * @param companyId Company filter (optional)
+     * @param status Status filter (optional)
+     * @param employeeId Employee filter (optional)
+     * @param dateFrom Date range start (optional)
+     * @param dateTo Date range end (optional)
+     * @param locationId Location filter (optional)
+     * @param departmentId Department filter (optional)
+     * @param searchQuery Search by employee name or code (optional)
+     */
+    List<AttendanceRegularization> getRegularizationsWithFilters(String tenantId, Long companyId,
+                                                                   ApprovalStatus status, Long employeeId,
+                                                                   LocalDate dateFrom, LocalDate dateTo,
+                                                                   Long locationId, Long departmentId,
+                                                                   String searchQuery);
+
+
+    /**
+     * Get regularizations with role-based filtering for Time Center.
+     * - ADMIN: sees all regularizations
+     * - MANAGER: sees only their direct reportees' regularizations
+     * - EMPLOYEE: sees only their own regularizations
+     *
+     * @param tenantId Tenant identifier
+     * @param companyId Company filter (optional)
+     * @param status Status filter (optional)
+     * @param dateFrom Date range start (optional)
+     * @param dateTo Date range end (optional)
+     * @param locationId Location filter (optional)
+     * @param departmentId Department filter (optional)
+     * @param searchQuery Search by employee name or code (optional)
+     * @param userId User ID for determining role and permissions (temporary - will be replaced with security context)
+     * @return Filtered list of regularizations based on user's role
+     */
+    List<AttendanceRegularization> getRegularizationsWithRoleFilter(String tenantId, Long companyId,
+                                                                     ApprovalStatus status,
+                                                                     LocalDate dateFrom, LocalDate dateTo,
+                                                                     Long locationId, Long departmentId,
+                                                                     String searchQuery, Long userId);
 
     /**
      * Get regularization by ID.

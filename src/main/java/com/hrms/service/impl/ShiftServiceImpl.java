@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,15 +80,16 @@ public class ShiftServiceImpl implements ShiftService {
 
         mapInputToEntity(input, shift);
 
-        // Clear and replace breaks
-        shift.getBreaks().clear();
+        // Replace breaks using the helper method from Shift entity
+        List<ShiftBreak> newBreaks = new ArrayList<>();
         if (input.getBreaks() != null) {
             for (ShiftBreakInput breakInput : input.getBreaks()) {
                 ShiftBreak shiftBreak = new ShiftBreak();
                 mapBreakInputToEntity(breakInput, shiftBreak);
-                shift.addBreak(shiftBreak);
+                newBreaks.add(shiftBreak);
             }
         }
+        shift.replaceBreaks(newBreaks);
 
         return shiftRepository.save(shift);
     }

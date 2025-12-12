@@ -93,6 +93,9 @@ public class AttendanceRegularization {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
+    @Column(name = "approver_remarks", columnDefinition = "TEXT")
+    private String approverRemarks;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
@@ -113,11 +116,17 @@ public class AttendanceRegularization {
         this.status = ApprovalStatus.PENDING;
     }
 
-    // Helper method to approve
+    // Helper method to approve (without remarks - backward compatible)
     public void approve(UserAccount approver) {
+        approve(approver, null);
+    }
+
+    // Helper method to approve with optional remarks
+    public void approve(UserAccount approver, String remarks) {
         this.status = ApprovalStatus.APPROVED;
         this.approvedBy = approver;
         this.approvedAt = OffsetDateTime.now();
+        this.approverRemarks = remarks;
     }
 
     // Helper method to reject

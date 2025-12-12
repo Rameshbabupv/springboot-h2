@@ -89,8 +89,10 @@ type AttendancePolicyTemplate {
   graceOutMinutes: Int
   firstHalfEnd: String
   secondHalfStart: String
-  isOtEligible: Boolean
+  isOTEligible: Boolean
   hasIncentives: Boolean
+  createdAt: String
+  updatedAt: String
 }
 
 # WeekoffRule - Weekly off patterns
@@ -184,6 +186,7 @@ type AttendanceRegularization {
   approvedByUser: UserAccount
   approvedAt: String
   rejectionReason: String
+  approverRemarks: String
   createdAt: String
   updatedAt: String
 }
@@ -256,7 +259,7 @@ input AttendancePolicyTemplateInput {
   graceOutMinutes: Int
   firstHalfEnd: String
   secondHalfStart: String
-  isOtEligible: Boolean
+  isOTEligible: Boolean
   hasIncentives: Boolean
 }
 
@@ -334,6 +337,15 @@ input ExcelRowInput {
   remarks: String
 }
 
+# Input for updating attendance record (Time Center inline editing)
+input AttendanceUpdateInput {
+  attendanceId: ID!            # Required: ID of daily_attendance record
+  firstPunchIn: String         # Optional: HH:MM format (24-hour)
+  lastPunchOut: String         # Optional: HH:MM format (24-hour)
+  status: AttendanceStatus     # Optional: PRESENT, ABSENT, etc.
+  remarks: String              # Optional: Notes/comments
+}
+
 type ValidationResult {
   totalRows: Int!
   validRecords: Int!
@@ -405,8 +417,13 @@ extend type Query {
   dailyAttendance(tenantId: String!, companyId: ID!, dateFrom: String!, dateTo: String!, employeeId: ID, status: AttendanceStatus, locationId: ID, departmentId: ID, searchQuery: String): [DailyAttendance]
   employeeAttendance(tenantId: String!, employeeId: ID!, dateFrom: String!, dateTo: String!): [DailyAttendance]
 
-  # Regularizations
-  regularizations(tenantId: String!, companyId: ID, status: ApprovalStatus, employeeId: ID): [AttendanceRegularization]
+  # Regularizations (with Time Center filters and role-based access control)
+  # Note: userId parameter is temporary until proper authentication context is implemented
+  # When userId is provided, filtering is based on user's role:
+  # - ADMIN: sees all regularizations
+  # - MANAGER: sees only direct reportees' regularizations
+  # - EMPLOYEE: sees only their own regularizations
+  regularizations(tenantId: String!, companyId: ID, status: ApprovalStatus, employeeId: ID, dateFrom: String, dateTo: String, locationId: ID, departmentId: ID, searchQuery: String, userId: ID): [AttendanceRegularization]
   pendingRegularizations(tenantId: String!, companyId: ID!): [AttendanceRegularization]
 
   # Employee Self-Service - Regularization History
@@ -466,7 +483,7 @@ extend type Mutation {
 
   # Regularizations
   submitRegularization(tenantId: String!, companyId: ID!, input: RegularizationInput!): AttendanceRegularization
-  approveRegularization(tenantId: String!, id: ID!): AttendanceRegularization
+  approveRegularization(tenantId: String!, id: ID!, remarks: String): AttendanceRegularization
   rejectRegularization(tenantId: String!, id: ID!, reason: String!): AttendanceRegularization
 
   # Bulk Regularizations (Time Center)
@@ -476,6 +493,9 @@ extend type Mutation {
   # Time Center - Status Updates
   updateAttendanceStatus(tenantId: String!, attendanceId: ID!, newStatus: AttendanceStatus!, reason: String!): DailyAttendance
   bulkUpdateAttendanceStatus(tenantId: String!, attendanceIds: [ID!]!, newStatus: AttendanceStatus!, reason: String!): BulkStatusUpdateResult
+
+  # Time Center - Attendance Record Update (inline editing)
+  updateAttendanceRecord(tenantId: String!, input: AttendanceUpdateInput!): DailyAttendance
 
   # Biometric Sync
   syncBiometricData(tenantId: String!, companyId: ID): BiometricSyncResult
@@ -522,7 +542,7 @@ type AttendanceImportLog {
   tenantId: String!
   company: Company
   fileName: String!
-  fileSizeBytes: Long
+  fileSizeBytes: Int
   totalRows: Int!
   importedCount: Int!
   skippedCount: Int!
@@ -531,7 +551,7 @@ type AttendanceImportLog {
   errorMessage: String
   startedAt: String
   completedAt: String
-  processingTimeMs: Long
+  processingTimeMs: Int
   importedBy: UserAccount
   createdAt: String!
 }
@@ -539,7 +559,7 @@ type AttendanceImportLog {
 # Import log page with pagination
 type ImportLogPage {
   items: [AttendanceImportLog!]!
-  totalCount: Long!
+  totalCount: Int!
   pageInfo: ImportPageInfo!
 }
 
@@ -700,6 +720,8 @@ enum MissedPunchType {
 }
 
 enum RegularizationType {
+  MISSING_IN
+  MISSING_OUT
   MISSED_PUNCH
   WRONG_PUNCH
   LATE_ENTRY

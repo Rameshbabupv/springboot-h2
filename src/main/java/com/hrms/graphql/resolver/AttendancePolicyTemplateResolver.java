@@ -1,14 +1,17 @@
 package com.hrms.graphql.resolver;
 
 import com.hrms.entity.AttendancePolicyTemplate;
+import com.hrms.entity.Shift;
 import com.hrms.graphql.input.AttendancePolicyTemplateInput;
 import com.hrms.service.AttendancePolicyTemplateService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * GraphQL resolver for AttendancePolicyTemplate operations.
@@ -20,6 +23,21 @@ public class AttendancePolicyTemplateResolver {
 
     public AttendancePolicyTemplateResolver(AttendancePolicyTemplateService templateService) {
         this.templateService = templateService;
+    }
+
+    // Schema Mappings for field name differences
+
+    @SchemaMapping(typeName = "AttendancePolicyTemplate", field = "isOTEligible")
+    public Boolean isOTEligible(AttendancePolicyTemplate template) {
+        return template.getIsOtEligible();
+    }
+
+    @SchemaMapping(typeName = "AttendancePolicyTemplate", field = "applicableShifts")
+    public List<Shift> applicableShifts(AttendancePolicyTemplate template) {
+        // Extract Shift objects from PolicyShift join entities
+        return template.getPolicyShifts().stream()
+                .map(policyShift -> policyShift.getShift())
+                .collect(Collectors.toList());
     }
 
     // Queries

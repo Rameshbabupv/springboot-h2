@@ -1,5 +1,6 @@
 package com.hrms.graphql.input;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -31,6 +32,6 @@ public class AttendancePolicyTemplateInput {
     private Integer graceOutMinutes;
     private String firstHalfEnd;
     private String secondHalfStart;
-    private Boolean isOtEligible;
+    private Boolean isOTEligible;
     private Boolean hasIncentives;
 }

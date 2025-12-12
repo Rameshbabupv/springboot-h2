@@ -6,7 +6,9 @@ import com.hrms.entity.DailyAttendance;
 import com.hrms.entity.Employee;
 import com.hrms.entity.Shift;
 import com.hrms.enums.AttendanceStatus;
+import com.hrms.graphql.input.AttendanceUpdateInput;
 import com.hrms.graphql.input.BulkAttendanceEntryInput;
+import com.hrms.repository.EmployeeRepository;
 import com.hrms.service.DailyAttendanceService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -27,16 +29,34 @@ import java.util.List;
 public class DailyAttendanceResolver {
 
     private final DailyAttendanceService attendanceService;
+    private final EmployeeRepository employeeRepository;
 
-    public DailyAttendanceResolver(DailyAttendanceService attendanceService) {
+    public DailyAttendanceResolver(DailyAttendanceService attendanceService,
+                                   EmployeeRepository employeeRepository) {
         this.attendanceService = attendanceService;
+        this.employeeRepository = employeeRepository;
     }
 
     // Schema Mappings for nested objects
 
     @SchemaMapping(typeName = "DailyAttendance", field = "employee")
     public Employee employee(DailyAttendance attendance) {
-        return attendance.getEmployee();
+        if (attendance.getEmployee() == null) {
+            return null;
+        }
+        // Fetch employee from database to avoid lazy loading issues
+        return employeeRepository.findById(attendance.getEmployee().getId())
+            .orElse(null);
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "employeeId")
+    public Long employeeId(DailyAttendance attendance) {
+        return attendance.getEmployee() != null ? attendance.getEmployee().getId() : null;
+    }
+
+    @SchemaMapping(typeName = "DailyAttendance", field = "companyId")
+    public Long companyId(DailyAttendance attendance) {
+        return attendance.getCompany() != null ? attendance.getCompany().getId() : null;
     }
 
     @SchemaMapping(typeName = "DailyAttendance", field = "company")
@@ -147,6 +167,19 @@ public class DailyAttendanceResolver {
                                                    @Argument AttendanceStatus newStatus,
                                                    @Argument String reason) {
         return attendanceService.updateAttendanceStatus(tenantId, attendanceId, newStatus, reason);
+    }
+
+
+    @MutationMapping
+    public DailyAttendance updateAttendanceRecord(@Argument String tenantId,
+                                                   @Argument AttendanceUpdateInput input) {
+        return attendanceService.updateAttendanceRecord(
+                tenantId,
+                input.getAttendanceId(),
+                input.getFirstPunchIn(),
+                input.getLastPunchOut(),
+                input.getStatus(),
+                input.getRemarks());
     }
 
     @MutationMapping

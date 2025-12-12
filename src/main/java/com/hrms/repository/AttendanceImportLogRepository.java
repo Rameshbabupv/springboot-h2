@@ -32,17 +32,24 @@ public interface AttendanceImportLogRepository extends JpaRepository<AttendanceI
 
     /**
      * Find import logs with filters.
+     * Uses native query to properly handle nullable enum parameter with PostgreSQL.
      */
-    @Query("SELECT ail FROM AttendanceImportLog ail " +
-           "WHERE ail.tenantId = :tenantId AND ail.company.id = :companyId " +
-           "AND (:status IS NULL OR ail.status = :status) " +
-           "AND (:fromDate IS NULL OR ail.createdAt >= :fromDate) " +
-           "AND (:toDate IS NULL OR ail.createdAt <= :toDate) " +
-           "ORDER BY ail.createdAt DESC")
+    @Query(value = "SELECT * FROM attendance_import_log ail " +
+           "WHERE ail.tenant_id = :tenantId AND ail.company_id = :companyId " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR ail.status = :status) " +
+           "AND (CAST(:fromDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR ail.created_at >= :fromDate) " +
+           "AND (CAST(:toDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR ail.created_at <= :toDate) " +
+           "ORDER BY ail.created_at DESC",
+           countQuery = "SELECT COUNT(*) FROM attendance_import_log ail " +
+           "WHERE ail.tenant_id = :tenantId AND ail.company_id = :companyId " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR ail.status = :status) " +
+           "AND (CAST(:fromDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR ail.created_at >= :fromDate) " +
+           "AND (CAST(:toDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR ail.created_at <= :toDate)",
+           nativeQuery = true)
     Page<AttendanceImportLog> findWithFilters(
             @Param("tenantId") String tenantId,
             @Param("companyId") Long companyId,
-            @Param("status") ImportStatus status,
+            @Param("status") String status,
             @Param("fromDate") OffsetDateTime fromDate,
             @Param("toDate") OffsetDateTime toDate,
             Pageable pageable);

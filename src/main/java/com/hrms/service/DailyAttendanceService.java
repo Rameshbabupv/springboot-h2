@@ -75,6 +75,20 @@ public interface DailyAttendanceService {
                                             AttendanceStatus newStatus, String reason);
 
     /**
+     * Update attendance record with times, status, and remarks (Time Center inline editing).
+     * @param tenantId Tenant identifier
+     * @param attendanceId Attendance record ID
+     * @param firstPunchIn IN time in HH:MM format (optional)
+     * @param lastPunchOut OUT time in HH:MM format (optional)
+     * @param status New status (optional)
+     * @param remarks Notes/comments (optional)
+     * @return Updated attendance record
+     */
+    DailyAttendance updateAttendanceRecord(String tenantId, Long attendanceId,
+                                            String firstPunchIn, String lastPunchOut,
+                                            AttendanceStatus status, String remarks);
+
+    /**
      * Bulk update attendance status.
      * @param tenantId Tenant identifier
      * @param attendanceIds List of attendance IDs to update

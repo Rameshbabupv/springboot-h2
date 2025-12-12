@@ -7,6 +7,8 @@ import com.hrms.entity.Employee;
 import com.hrms.entity.UserAccount;
 import com.hrms.enums.ApprovalStatus;
 import com.hrms.graphql.input.RegularizationInput;
+import com.hrms.repository.EmployeeRepository;
+import com.hrms.repository.UserAccountRepository;
 import com.hrms.service.AttendanceRegularizationService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -25,16 +27,49 @@ import java.util.List;
 public class AttendanceRegularizationResolver {
 
     private final AttendanceRegularizationService regularizationService;
+    private final EmployeeRepository employeeRepository;
+    private final UserAccountRepository userAccountRepository;
 
-    public AttendanceRegularizationResolver(AttendanceRegularizationService regularizationService) {
+    public AttendanceRegularizationResolver(AttendanceRegularizationService regularizationService,
+                                           EmployeeRepository employeeRepository,
+                                           UserAccountRepository userAccountRepository) {
         this.regularizationService = regularizationService;
+        this.employeeRepository = employeeRepository;
+        this.userAccountRepository = userAccountRepository;
     }
 
     // Schema Mappings for nested objects
 
     @SchemaMapping(typeName = "AttendanceRegularization", field = "employee")
     public Employee employee(AttendanceRegularization regularization) {
-        return regularization.getEmployee();
+        if (regularization.getEmployee() == null) {
+            return null;
+        }
+        // Fetch employee from database to avoid lazy loading issues
+        return employeeRepository.findById(regularization.getEmployee().getId())
+            .orElse(null);
+    }
+
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "employeeId")
+    public Long employeeId(AttendanceRegularization regularization) {
+        return regularization.getEmployee() != null ? regularization.getEmployee().getId() : null;
+    }
+
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "companyId")
+    public Long companyId(AttendanceRegularization regularization) {
+        return regularization.getCompany() != null ? regularization.getCompany().getId() : null;
+    }
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "dailyAttendanceId")
+    public Long dailyAttendanceId(AttendanceRegularization regularization) {
+        return regularization.getDailyAttendance() != null ? regularization.getDailyAttendance().getId() : null;
+    }
+
+    @SchemaMapping(typeName = "AttendanceRegularization", field = "approvedBy")
+    public Long approvedBy(AttendanceRegularization regularization) {
+        return regularization.getApprovedBy() != null ? regularization.getApprovedBy().getId() : null;
     }
 
     @SchemaMapping(typeName = "AttendanceRegularization", field = "company")
@@ -49,7 +84,12 @@ public class AttendanceRegularizationResolver {
 
     @SchemaMapping(typeName = "AttendanceRegularization", field = "approvedByUser")
     public UserAccount approvedByUser(AttendanceRegularization regularization) {
-        return regularization.getApprovedBy();
+        if (regularization.getApprovedBy() == null) {
+            return null;
+        }
+        // Fetch user from database to avoid lazy loading issues
+        return userAccountRepository.findById(regularization.getApprovedBy().getId())
+            .orElse(null);
     }
 
     // Queries
@@ -58,7 +98,37 @@ public class AttendanceRegularizationResolver {
     public List<AttendanceRegularization> regularizations(@Argument String tenantId,
                                                            @Argument Long companyId,
                                                            @Argument ApprovalStatus status,
-                                                           @Argument Long employeeId) {
+                                                           @Argument Long employeeId,
+                                                           @Argument String dateFrom,
+                                                           @Argument String dateTo,
+                                                           @Argument Long locationId,
+                                                           @Argument Long departmentId,
+                                                           @Argument String searchQuery,
+                                                           @Argument Long userId) {
+        // Parse date filters
+        LocalDate from = dateFrom != null ? LocalDate.parse(dateFrom, DateTimeFormatter.ISO_DATE) : null;
+        LocalDate to = dateTo != null ? LocalDate.parse(dateTo, DateTimeFormatter.ISO_DATE) : null;
+
+        // If userId is provided, use role-based filtering
+        // Note: userId parameter is temporary until proper authentication context is implemented
+        if (userId != null) {
+            return regularizationService.getRegularizationsWithRoleFilter(tenantId, companyId, status,
+                    from, to, locationId, departmentId, searchQuery, userId);
+        }
+
+        // If employeeId is provided, filter by that specific employee
+        if (employeeId != null) {
+            return regularizationService.getRegularizationsWithFilters(tenantId, companyId, status, employeeId,
+                    from, to, locationId, departmentId, searchQuery);
+        }
+
+        // Use enhanced filter method if any additional filters are provided
+        if (dateFrom != null || dateTo != null || locationId != null || departmentId != null ||
+            (searchQuery != null && !searchQuery.isEmpty())) {
+            return regularizationService.getRegularizationsWithFilters(tenantId, companyId, status, employeeId,
+                    from, to, locationId, departmentId, searchQuery);
+        }
+
         return regularizationService.getRegularizations(tenantId, companyId, status, employeeId);
     }
 
@@ -95,9 +165,10 @@ public class AttendanceRegularizationResolver {
 
     @MutationMapping
     public AttendanceRegularization approveRegularization(@Argument String tenantId,
-                                                           @Argument Long id) {
+                                                           @Argument Long id,
+                                                           @Argument String remarks) {
         // Note: approverId should come from authenticated user context
-        return regularizationService.approveRegularization(tenantId, id, null);
+        return regularizationService.approveRegularization(tenantId, id, null, remarks);
     }
 
     @MutationMapping

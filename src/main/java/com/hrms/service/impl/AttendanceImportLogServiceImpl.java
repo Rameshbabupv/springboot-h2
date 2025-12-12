@@ -107,8 +107,11 @@ public class AttendanceImportLogServiceImpl implements AttendanceImportLogServic
         int page = offset / limit;
         PageRequest pageRequest = PageRequest.of(page, limit);
 
+        // Convert enum to String for native query (null-safe)
+        String statusString = status != null ? status.name() : null;
+
         Page<AttendanceImportLog> resultPage = importLogRepository.findWithFilters(
-                tenantId, companyId, status, fromDate, toDate, pageRequest);
+                tenantId, companyId, statusString, fromDate, toDate, pageRequest);
 
         int totalPages = resultPage.getTotalPages();
         int currentPage = page + 1;

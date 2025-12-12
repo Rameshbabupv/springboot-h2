@@ -9,6 +9,8 @@ import com.hrms.service.AttendancePolicyTemplateService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -30,6 +32,9 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
     private final PolicyIncentiveRepository incentiveRepository;
     private final CompanyRepository companyRepository;
     private final ShiftRepository shiftRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public AttendancePolicyTemplateServiceImpl(
             AttendancePolicyTemplateRepository templateRepository,
@@ -109,6 +114,10 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
 
         // Clear and replace related entities
         template.clearRules();
+
+        // Flush to ensure old associations are deleted before adding new ones
+        // This prevents duplicate key constraint violations
+        entityManager.flush();
 
         if (input.getWeekoffRules() != null) {
             for (WeekoffRuleInput ruleInput : input.getWeekoffRules()) {
@@ -236,7 +245,7 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
         template.setGraceOutMinutes(input.getGraceOutMinutes() != null ? input.getGraceOutMinutes() : 15);
         template.setFirstHalfEnd(input.getFirstHalfEnd() != null ? parseTime(input.getFirstHalfEnd()) : LocalTime.of(13, 0));
         template.setSecondHalfStart(input.getSecondHalfStart() != null ? parseTime(input.getSecondHalfStart()) : LocalTime.of(14, 0));
-        template.setIsOtEligible(input.getIsOtEligible() != null ? input.getIsOtEligible() : false);
+        template.setIsOtEligible(input.getIsOTEligible() != null ? input.getIsOTEligible() : false);
         template.setHasIncentives(input.getHasIncentives() != null ? input.getHasIncentives() : false);
     }
 

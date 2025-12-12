@@ -2,6 +2,7 @@ package com.hrms.service.impl;
 
 import com.hrms.entity.*;
 import com.hrms.enums.ApprovalStatus;
+import com.hrms.enums.RegularizationType;
 import com.hrms.graphql.input.RegularizationInput;
 import com.hrms.repository.*;
 import com.hrms.service.AttendanceRegularizationService;
@@ -68,6 +69,9 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
             throw new IllegalStateException("Regularization already exists for this date");
         }
 
+        // Validate punch times based on regularization type
+        validatePunchTimes(input);
+
         AttendanceRegularization regularization = new AttendanceRegularization();
         regularization.setTenantId(tenantId);
         regularization.setCompany(company);
@@ -93,7 +97,7 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
     }
 
     @Override
-    public AttendanceRegularization approveRegularization(String tenantId, Long id, Long approverId) {
+    public AttendanceRegularization approveRegularization(String tenantId, Long id, Long approverId, String remarks) {
         AttendanceRegularization regularization = regularizationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Regularization not found: " + id));
 
@@ -110,7 +114,7 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
             approver = userAccountRepository.findById(approverId).orElse(null);
         }
 
-        regularization.approve(approver);
+        regularization.approve(approver, remarks);
 
         // Update daily attendance with regularized times
         if (regularization.getDailyAttendance() != null) {
@@ -248,7 +252,7 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
 
         for (Long id : ids) {
             try {
-                AttendanceRegularization approved = approveRegularization(tenantId, id, approverId);
+                AttendanceRegularization approved = approveRegularization(tenantId, id, approverId, remarks);
                 results.add(new RegularizationResultItem(id, approved.getStatus().name(), null));
                 successCount++;
             } catch (Exception e) {
@@ -279,6 +283,90 @@ public class AttendanceRegularizationServiceImpl implements AttendanceRegulariza
         }
 
         return new BulkRegularizationResult(successCount, failedCount, results);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AttendanceRegularization> getRegularizationsWithFilters(String tenantId, Long companyId,
+                                                                         ApprovalStatus status, Long employeeId,
+                                                                         LocalDate dateFrom, LocalDate dateTo,
+                                                                         Long locationId, Long departmentId,
+                                                                         String searchQuery) {
+        String statusStr = status != null ? status.name() : null;
+        return regularizationRepository.findWithFilters(
+                tenantId, companyId, statusStr, employeeId,
+                dateFrom, dateTo, locationId, departmentId, searchQuery);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AttendanceRegularization> getRegularizationsWithRoleFilter(String tenantId, Long companyId,
+                                                                            ApprovalStatus status,
+                                                                            LocalDate dateFrom, LocalDate dateTo,
+                                                                            Long locationId, Long departmentId,
+                                                                            String searchQuery, Long userId) {
+        // If no userId provided, fall back to regular filter (no role-based restriction)
+        if (userId == null) {
+            String statusStr = status != null ? status.name() : null;
+            return regularizationRepository.findWithFilters(
+                    tenantId, companyId, statusStr, null,
+                    dateFrom, dateTo, locationId, departmentId, searchQuery);
+        }
+
+        // Get user's role and employee ID
+        UserAccount user = userAccountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        String userRole = user.getRole();
+        Long userEmployeeId = user.getEmployeeId();
+
+        String statusStr = status != null ? status.name() : null;
+
+        return regularizationRepository.findWithFiltersAndRole(
+                tenantId, companyId, statusStr,
+                dateFrom, dateTo, locationId, departmentId, searchQuery,
+                userRole, userEmployeeId);
+    }
+
+    private void validatePunchTimes(RegularizationInput input) {
+        RegularizationType type = input.getRegularizationType();
+        if (type == null) {
+            throw new IllegalArgumentException("Regularization type is required");
+        }
+
+        switch (type) {
+            case MISSING_IN:
+                if (input.getRegularizedPunchIn() == null || input.getRegularizedPunchIn().isEmpty()) {
+                    throw new IllegalArgumentException("Regularized punch in time is required for MISSING_IN");
+                }
+                break;
+            case MISSING_OUT:
+                if (input.getRegularizedPunchOut() == null || input.getRegularizedPunchOut().isEmpty()) {
+                    throw new IllegalArgumentException("Regularized punch out time is required for MISSING_OUT");
+                }
+                break;
+            case MISSED_PUNCH:
+                if ((input.getRegularizedPunchIn() == null || input.getRegularizedPunchIn().isEmpty()) &&
+                    (input.getRegularizedPunchOut() == null || input.getRegularizedPunchOut().isEmpty())) {
+                    throw new IllegalArgumentException("At least one regularized punch time is required for MISSED_PUNCH");
+                }
+                break;
+            case WRONG_PUNCH:
+                if ((input.getRegularizedPunchIn() == null || input.getRegularizedPunchIn().isEmpty()) &&
+                    (input.getRegularizedPunchOut() == null || input.getRegularizedPunchOut().isEmpty())) {
+                    throw new IllegalArgumentException("Regularized punch time is required for WRONG_PUNCH");
+                }
+                break;
+            // LATE_ENTRY, EARLY_EXIT, ON_DUTY, SYSTEM_ERROR, OTHER - no specific validation required
+            default:
+                break;
+        }
+
+        // Validate reason is provided
+        if (input.getReason() == null || input.getReason().trim().isEmpty()) {
+            throw new IllegalArgumentException("Reason is required for regularization request");
+        }
     }
 
     private LocalDate parseDate(String date) {
