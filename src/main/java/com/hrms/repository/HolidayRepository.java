@@ -161,4 +161,16 @@ public interface HolidayRepository extends JpaRepository<Holiday, Long> {
                                            @Param("year") Integer year,
                                            @Param("locationId") Long locationId,
                                            @Param("searchQuery") String searchQuery);
+
+    /**
+     * Find holidays by category (all years).
+     * Used for employee optional holiday selection.
+     * Note: Does not eagerly fetch mappings to avoid MultipleBagFetchException.
+     * Mappings will be lazy-loaded when accessed.
+     */
+    @Query("SELECT DISTINCT h FROM Holiday h " +
+           "WHERE h.tenantId = :tenantId " +
+           "AND h.category = :category ORDER BY h.date")
+    List<Holiday> findByTenantIdAndCategoryOrderByDateAsc(@Param("tenantId") String tenantId,
+                                                           @Param("category") HolidayCategory category);
 }

@@ -394,6 +394,33 @@ type EmployeeAttendanceRow {
   existingAttendance: DailyAttendance   # null if no entry for date
 }
 
+# Employee Holiday Selection Types
+type EmployeeHolidaySelection {
+  id: ID!
+  employeeId: ID!
+  holidayId: ID!
+  holiday: Holiday
+  financialYear: String!
+  selectedAt: String!
+  isSubmitted: Boolean!
+  submittedAt: String
+}
+
+type EmployeeHolidaySelectionsResponse {
+  selections: [EmployeeHolidaySelection!]!
+  isSubmitted: Boolean!
+  submittedAt: String
+  allowedCount: Int!
+  selectedCount: Int!
+}
+
+type SubmitEmployeeHolidaySelectionsResponse {
+  success: Boolean!
+  message: String!
+  selections: [EmployeeHolidaySelection!]
+  selectedCount: Int!
+}
+
 # ====================
 # QUERIES
 # ====================
@@ -407,6 +434,10 @@ extend type Query {
   # Holidays
   holidays(tenantId: String!, companyId: ID, year: Int, locationId: ID, searchQuery: String): [Holiday]
   holiday(tenantId: String!, id: ID!): Holiday
+
+  # Employee Holiday Selection
+  getAvailableOptionalHolidays(tenantId: String!, financialYear: String!, employeeId: ID): [Holiday!]!
+  getEmployeeHolidaySelections(tenantId: String!, employeeId: ID!, financialYear: String!): EmployeeHolidaySelectionsResponse!
 
   # Attendance Policy Templates
   attendancePolicyTemplates(tenantId: String!, companyId: ID, isActive: Boolean, searchQuery: String): [AttendancePolicyTemplate]
@@ -460,6 +491,9 @@ extend type Mutation {
   updateHoliday(tenantId: String!, id: ID!, input: HolidayInput!): Holiday
   deleteHoliday(tenantId: String!, id: ID!): Boolean
   bulkCreateHolidays(tenantId: String!, inputs: [HolidayInput]!): [Holiday]
+
+  # Employee Holiday Selection
+  submitEmployeeHolidaySelections(tenantId: String!, employeeId: ID!, financialYear: String!, holidayIds: [ID!]!): SubmitEmployeeHolidaySelectionsResponse!
 
   # Attendance Policy Templates
   createAttendancePolicyTemplate(tenantId: String!, companyId: ID, input: AttendancePolicyTemplateInput!): AttendancePolicyTemplate

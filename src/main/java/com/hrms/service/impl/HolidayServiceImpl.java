@@ -8,6 +8,8 @@ import com.hrms.service.HolidayService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -26,6 +28,9 @@ public class HolidayServiceImpl implements HolidayService {
     private final HolidayLocationMappingRepository locationMappingRepository;
     private final CompanyRepository companyRepository;
     private final CompanyLocationRepository locationRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public HolidayServiceImpl(HolidayRepository holidayRepository,
                              HolidayCompanyMappingRepository companyMappingRepository,
@@ -82,6 +87,10 @@ public class HolidayServiceImpl implements HolidayService {
 
         // Clear and replace mappings
         holiday.clearMappings();
+
+        // Flush to ensure old associations are deleted before adding new ones
+        // This prevents duplicate key constraint violations
+        entityManager.flush();
 
         if (input.getCompanyIds() != null && !input.getCompanyIds().isEmpty()) {
             for (Long companyId : input.getCompanyIds()) {
