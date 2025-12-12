@@ -70,6 +70,7 @@ type AttendancePolicyTemplate {
   templateCode: String!
   templateName: String!
   description: String
+  changeNotes: String
   isDefault: Boolean
   isActive: Boolean
   priority: Int
@@ -241,6 +242,7 @@ input AttendancePolicyTemplateInput {
   templateCode: String!
   templateName: String!
   description: String
+  changeNotes: String
   isDefault: Boolean
   isActive: Boolean
   priority: Int

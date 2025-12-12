@@ -60,6 +60,9 @@ public class AttendancePolicyTemplate {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "change_notes", columnDefinition = "TEXT")
+    private String changeNotes;
+
     @Column(name = "is_default")
     private Boolean isDefault = false;
 

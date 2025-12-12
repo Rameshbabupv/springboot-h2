@@ -14,6 +14,7 @@ public class AttendancePolicyTemplateInput {
     private String templateCode;
     private String templateName;
     private String description;
+    private String changeNotes;
     private Boolean isDefault;
     private Boolean isActive;
     private Integer priority;

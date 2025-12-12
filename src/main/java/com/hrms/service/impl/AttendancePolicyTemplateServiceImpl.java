@@ -228,6 +228,7 @@ public class AttendancePolicyTemplateServiceImpl implements AttendancePolicyTemp
         template.setTemplateCode(input.getTemplateCode());
         template.setTemplateName(input.getTemplateName());
         template.setDescription(input.getDescription());
+        template.setChangeNotes(input.getChangeNotes());
         template.setIsDefault(input.getIsDefault() != null ? input.getIsDefault() : false);
         template.setIsActive(input.getIsActive() != null ? input.getIsActive() : true);
         template.setPriority(input.getPriority() != null ? input.getPriority() : 0);
