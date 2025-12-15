@@ -14,13 +14,17 @@ enum LeaveCategory {
     DEFINED
     UNLIMITED
     COMPENSATORY
+    PERMISSION
 }
 
 enum CreditMethod {
     ANNUAL
     MONTHLY
+    QUARTERLY
     WORKING_DAYS
     UNLIMITED
+    PERMISSION
+    COMPENSATORY
     CUSTOM
 }
 
@@ -28,9 +32,10 @@ enum CreditTiming {
     YEAR_START
     MONTH_START
     MONTH_END
+    QUARTER_START
+    QUARTER_END
     CONTINUOUS
     AFTER_PROBATION
-    QUARTERLY
 }
 
 enum YearEndAction {
@@ -64,6 +69,24 @@ enum LeaveDayType {
     SECOND_HALF
 }
 
+enum PermissionLimitType {
+    INSTANCES
+    HOURS
+    WHICHEVER_FIRST
+}
+
+enum PermissionExcessHandling {
+    BLOCK
+    LAPSE
+    CONVERT_TO_LEAVE
+}
+
+enum PermissionExcessRounding {
+    ROUND_UP
+    ROUND_DOWN
+    ROUND_NEAREST_HALF
+}
+
 # =============================================================================
 # TYPES
 # =============================================================================
@@ -78,10 +101,13 @@ type LeaveType {
     category: LeaveCategory!
     description: String
     icon: String
-    color: String
+    colorCode: String
+    displayOrder: Int
     isActive: Boolean!
     createdAt: String
     updatedAt: String
+    createdBy: String
+    updatedBy: String
 }
 
 type LeavePolicy {
@@ -225,18 +251,115 @@ type YearEndProcessResult {
     errors: [String!]
 }
 
+# Leave Policy Template (New Architecture)
+type LeavePolicyTemplate {
+    id: ID!
+    tenantId: String!
+    company: Company!
+    code: String!
+    name: String!
+    description: String
+    leaveYearStart: Int!
+    criteria: String
+    entitlements: [LeaveEntitlement!]!
+    effectiveFrom: String!
+    effectiveTo: String
+    isActive: Boolean!
+    isDefault: Boolean!
+    priority: Int!
+    changeNotes: String
+    version: Int!
+    createdAt: String!
+    updatedAt: String!
+    createdBy: String!
+    updatedBy: String!
+}
+
+# Leave Entitlement (JSONB structure within LeavePolicyTemplate)
+type LeaveEntitlement {
+    # Core fields (all categories)
+    leaveTypeCode: String!
+    isEnabled: Boolean!
+    isPaid: Boolean!
+
+    # DEFINED category fields
+    creditFrequency: CreditMethod
+    annualQuota: Float
+    monthlyCredit: Float
+    quarterlyCredit: Float
+    creditTiming: CreditTiming
+
+    # EARNED category fields
+    workingDaysPerCredit: Int
+    creditPerWorkingDays: Float
+
+    # Year-end handling (DEFINED, EARNED categories)
+    yearEndAction: YearEndAction
+    maxCarryForward: Float
+    carryForwardExpiry: CarryForwardExpiry
+    encashmentAllowed: Boolean
+    maxEncashment: Float
+
+    # Pro-rata and restrictions
+    proRataOnJoining: Boolean
+    minDaysPerApplication: Float
+    maxDaysPerApplication: Float
+    advanceNoticeDays: Int
+    maxConsecutiveDays: Int
+
+    # Application settings
+    allowHalfDay: Boolean
+    allowHourly: Boolean
+    requiresAttachment: Boolean
+    attachmentRequiredAfterDays: Int
+
+    # Payhead links (for payroll integration)
+    lopPayheadCode: String
+    encashPayheadCode: String
+
+    # Comp-Off specific (COMPENSATORY category)
+    compOffExpiryDays: Int
+    compOffMinHoursFullDay: Float
+    compOffMinHoursHalfDay: Float
+
+    # Permission specific (PERMISSION category)
+    permissionMaxInstancesPerMonth: Int
+    permissionMaxHoursPerMonth: Float
+    permissionMaxHoursPerInstance: Float
+    permissionLimitType: PermissionLimitType
+    permissionExcessHandling: PermissionExcessHandling
+    permissionExcessRounding: PermissionExcessRounding
+    permissionConversionRate: Float
+    permissionDeductFromLeaveType: String
+    permissionFallbackLeaveType: String
+}
+
+# Generic delete response
+type DeleteResponse {
+    success: Boolean!
+    message: String!
+}
+
 # =============================================================================
 # INPUTS
 # =============================================================================
 
 input LeaveTypeInput {
-    code: String!
-    name: String!
-    category: LeaveCategory!
+    code: String
+    name: String
+    category: LeaveCategory
     description: String
     icon: String
-    color: String
+    colorCode: String
+    displayOrder: Int
     isActive: Boolean
+}
+
+type DeleteLeaveTypeResponse {
+    success: Boolean!
+    message: String!
+    hardDeleted: Boolean!
+    reason: String
 }
 
 input LeavePolicyInput {
@@ -304,16 +427,89 @@ input LeaveBalanceAdjustmentInput {
     reason: String!
 }
 
+# Leave Policy Template Inputs
+input LeavePolicyTemplateInput {
+    code: String!
+    name: String!
+    description: String
+    leaveYearStart: Int
+    criteria: String
+    entitlements: [LeaveEntitlementInput!]!
+    effectiveFrom: String!
+    effectiveTo: String
+    isActive: Boolean
+    isDefault: Boolean
+    priority: Int
+    changeNotes: String
+}
+
+input LeaveEntitlementInput {
+    # Core fields (all categories)
+    leaveTypeId: ID         # Optional: Accept ID (backward compatibility)
+    leaveTypeCode: String   # Optional: Accept code (preferred) - at least one must be provided
+    isEnabled: Boolean!
+    isPaid: Boolean!
+
+    # DEFINED category fields
+    creditFrequency: CreditMethod
+    annualQuota: Float
+    monthlyCredit: Float
+    quarterlyCredit: Float
+    creditTiming: CreditTiming
+
+    # EARNED category fields
+    workingDaysPerCredit: Int
+    creditPerWorkingDays: Float
+
+    # Year-end handling (DEFINED, EARNED categories)
+    yearEndAction: YearEndAction
+    maxCarryForward: Float
+    carryForwardExpiry: CarryForwardExpiry
+    encashmentAllowed: Boolean
+    maxEncashment: Float
+
+    # Pro-rata and restrictions
+    proRataOnJoining: Boolean
+    minDaysPerApplication: Float
+    maxDaysPerApplication: Float
+    advanceNoticeDays: Int
+    maxConsecutiveDays: Int
+
+    # Application settings
+    allowHalfDay: Boolean
+    allowHourly: Boolean
+    requiresAttachment: Boolean
+    attachmentRequiredAfterDays: Int
+
+    # Payhead links (for payroll integration)
+    lopPayheadCode: String
+    encashPayheadCode: String
+
+    # Comp-Off specific (COMPENSATORY category)
+    compOffExpiryDays: Int
+    compOffMinHoursFullDay: Float
+    compOffMinHoursHalfDay: Float
+
+    # Permission specific (PERMISSION category)
+    permissionMaxInstancesPerMonth: Int
+    permissionMaxHoursPerMonth: Float
+    permissionMaxHoursPerInstance: Float
+    permissionLimitType: PermissionLimitType
+    permissionExcessHandling: PermissionExcessHandling
+    permissionExcessRounding: PermissionExcessRounding
+    permissionConversionRate: Float
+    permissionDeductFromLeaveType: String
+    permissionFallbackLeaveType: String
+}
+
 # =============================================================================
 # QUERIES (extend)
 # =============================================================================
 
 extend type Query {
-    # LeaveType queries
-    leaveTypes(tenantId: String!, companyId: ID!, activeOnly: Boolean): [LeaveType!]!
-    leaveType(id: ID!): LeaveType
-    leaveTypeByCode(tenantId: String!, companyId: ID!, code: String!): LeaveType
-    sharedLeaveTypes(tenantId: String!): [LeaveType!]!
+    # LeaveType queries (Frontend Integration API)
+    leaveTypes(tenantId: String!, companyId: ID!, isActive: Boolean): [LeaveType!]!
+    leaveType(tenantId: String!, companyId: ID!, id: ID!): LeaveType
 
     # LeavePolicy queries
     leavePolicies(tenantId: String!, companyId: ID!, status: String): [LeavePolicy!]!
@@ -332,6 +528,11 @@ extend type Query {
     leaveApplicationByNumber(tenantId: String!, companyId: ID!, applicationNumber: String!): LeaveApplication
     pendingApprovals(tenantId: String!, companyId: ID!, approverId: ID!): [LeaveApplication!]!
     myLeaveApplications(tenantId: String!, companyId: ID!, employeeId: ID!): [LeaveApplication!]!
+
+    # Leave Policy Template queries (New Architecture)
+    leavePolicyTemplates(tenantId: String!, companyId: ID!, isActive: Boolean): [LeavePolicyTemplate!]!
+    leavePolicyTemplate(tenantId: String!, companyId: ID!, id: ID!): LeavePolicyTemplate
+    applicableLeavePolicyTemplate(tenantId: String!, companyId: ID!, employeeId: ID!, effectiveDate: String!): LeavePolicyTemplate!
 }
 
 # =============================================================================
@@ -339,11 +540,10 @@ extend type Query {
 # =============================================================================
 
 extend type Mutation {
-    # LeaveType mutations
-    createLeaveType(tenantId: String!, companyId: ID, input: LeaveTypeInput!): LeaveType!
-    updateLeaveType(id: ID!, input: LeaveTypeInput!): LeaveType!
-    deleteLeaveType(id: ID!): Boolean!
-    toggleLeaveTypeStatus(id: ID!): LeaveType!
+    # LeaveType mutations (Frontend Integration API)
+    createLeaveType(tenantId: String!, companyId: ID!, input: LeaveTypeInput!): LeaveType!
+    updateLeaveType(tenantId: String!, companyId: ID!, id: ID!, input: LeaveTypeInput!): LeaveType!
+    deleteLeaveType(tenantId: String!, companyId: ID!, id: ID!): DeleteLeaveTypeResponse!
 
     # LeavePolicy mutations
     createLeavePolicy(tenantId: String!, companyId: ID, input: LeavePolicyInput!): LeavePolicy!
@@ -383,4 +583,9 @@ extend type Mutation {
     # Employee Leave Policy Assignment
     assignLeavePolicyToEmployee(employeeId: ID!, policyId: ID!): Employee!
     removeLeavePolicyFromEmployee(employeeId: ID!): Employee!
+
+    # Leave Policy Template mutations (New Architecture)
+    createLeavePolicyTemplate(tenantId: String!, companyId: ID!, input: LeavePolicyTemplateInput!): LeavePolicyTemplate!
+    updateLeavePolicyTemplate(tenantId: String!, companyId: ID!, id: ID!, input: LeavePolicyTemplateInput!): LeavePolicyTemplate!
+    deleteLeavePolicyTemplate(tenantId: String!, companyId: ID!, id: ID!): DeleteResponse!
 }
