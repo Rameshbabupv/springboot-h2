@@ -21,7 +21,7 @@ import java.util.List;
     @UniqueConstraint(columnNames = {"tenant_id", "template_code"})
 }, indexes = {
     @Index(name = "idx_template_tenant", columnList = "tenant_id"),
-    @Index(name = "idx_template_active", columnList = "is_active"),
+    @Index(name = "idx_emp_template_active", columnList = "is_active"),
     @Index(name = "idx_template_effective", columnList = "effective_from, effective_to")
 })
 @Data

@@ -14,6 +14,7 @@ import com.hrms.graphql.input.EmployeeTemplateFieldInput;
 import com.hrms.graphql.input.EmployeeTemplateInput;
 import com.hrms.graphql.input.EmployeeTemplateSectionInput;
 import com.hrms.graphql.input.FieldDefinitionMasterInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.EmployeeTemplateFieldService;
 import com.hrms.service.EmployeeTemplateService;
 import com.hrms.service.EmployeeTemplateSectionService;
@@ -42,11 +43,13 @@ public class EmployeeTemplateResolver {
     private final EmployeeTemplateFieldService templateFieldService;
     private final EmployeeValidationService validationService;
     private final ObjectMapper objectMapper;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     // ==================== Employee Template Queries ====================
 
     @QueryMapping
-    public List<EmployeeTemplateResponse> employeeTemplates(@Argument String tenantId) {
+    public List<EmployeeTemplateResponse> employeeTemplates(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return employeeTemplateService.getAllTemplates(tenantId);
     }
 
@@ -56,8 +59,41 @@ public class EmployeeTemplateResolver {
     }
 
     @QueryMapping
-    public List<EmployeeTemplateResponse> activeEmployeeTemplates(@Argument String tenantId) {
+    public List<EmployeeTemplateResponse> activeEmployeeTemplates(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return employeeTemplateService.getActiveTemplates(tenantId);
+    }
+
+    /**
+     * Query available criteria values for template assignment.
+     * Filters out values already assigned to other active templates.
+     */
+    @QueryMapping
+    public com.hrms.dto.response.AvailableCriteriaResponse availableCriteriaValues(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String criteriaType,
+            @Argument Long excludeTemplateId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+
+        log.info("Fetching available criteria values - tenantId: {}, type: {}, excludeId: {}",
+                 tenantId, criteriaType, excludeTemplateId);
+
+        try {
+            com.hrms.dto.response.AvailableCriteriaResponse response = employeeTemplateService
+                .getAvailableCriteriaValues(tenantId, criteriaType, excludeTemplateId);
+
+            log.info("Available criteria found - available: {}, assigned: {}",
+                     response.getTotalAvailable(), response.getTotalAssigned());
+
+            return response;
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid criteria type: {}", criteriaType, e);
+            throw new RuntimeException("Invalid criteria type: " + criteriaType);
+        } catch (Exception e) {
+            log.error("Error fetching available criteria", e);
+            throw new RuntimeException("Failed to fetch available criteria: " + e.getMessage());
+        }
     }
 
     // ==================== Employee Template Section Queries ====================
@@ -75,7 +111,8 @@ public class EmployeeTemplateResolver {
     // ==================== Field Definition Master Queries ====================
 
     @QueryMapping
-    public List<FieldDefinitionMasterResponse> fieldDefinitions(@Argument String tenantId) {
+    public List<FieldDefinitionMasterResponse> fieldDefinitions(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return fieldDefinitionService.getAllFields(tenantId);
     }
 
@@ -85,17 +122,20 @@ public class EmployeeTemplateResolver {
     }
 
     @QueryMapping
-    public List<FieldDefinitionMasterResponse> fieldDefinitionsByCategory(@Argument String tenantId, @Argument String category) {
+    public List<FieldDefinitionMasterResponse> fieldDefinitionsByCategory(@Argument(name = "tenantId") String tenantIdArg, @Argument String category) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return fieldDefinitionService.getFieldsByCategory(tenantId, category);
     }
 
     @QueryMapping
-    public List<FieldDefinitionMasterResponse> systemFieldDefinitions(@Argument String tenantId) {
+    public List<FieldDefinitionMasterResponse> systemFieldDefinitions(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return fieldDefinitionService.getSystemFields(tenantId);
     }
 
     @QueryMapping
-    public List<FieldDefinitionMasterResponse> customFieldDefinitions(@Argument String tenantId) {
+    public List<FieldDefinitionMasterResponse> customFieldDefinitions(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return fieldDefinitionService.getCustomFields(tenantId);
     }
 
@@ -114,7 +154,8 @@ public class EmployeeTemplateResolver {
     // ==================== Validation Queries ====================
 
     @QueryMapping
-    public String employeeTemplateValidationRules(@Argument String tenantId, @Argument String templateId) {
+    public String employeeTemplateValidationRules(@Argument(name = "tenantId") String tenantIdArg, @Argument String templateId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("Getting validation rules for template: {}", templateId);
         Map<String, Map<String, Object>> validationRules = validationService.getTemplateValidationRules(
                 tenantId,
