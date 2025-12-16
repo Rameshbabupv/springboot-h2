@@ -26,13 +26,13 @@ public class EmploymentType {
     @Column(nullable = false, length = 50)
     private String tenantId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 10)
     private String code;
 
-    @Column(length = 500)
+    @Column(length = 200)
     private String description;
 
     @Column(nullable = false)

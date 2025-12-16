@@ -33,7 +33,7 @@ public class State {
     @JoinColumn(name = "country_id", insertable = false, updatable = false)
     private Country country;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(nullable = false, length = 10)

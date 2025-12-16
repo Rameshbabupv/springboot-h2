@@ -25,7 +25,7 @@ public class StateRequest {
     private Long countryId;
 
     @NotBlank(message = "State name is required")
-    @Size(min = 2, max = 100, message = "State name must be between 2 and 100 characters")
+    @Size(min = 2, max = 50, message = "State name must be between 2 and 50 characters")
     @Pattern(regexp = "^[a-zA-Z\\s&\\-/]+$", message = "State name can only contain letters, spaces, &, -, and /")
     private String name;
 

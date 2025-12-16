@@ -21,16 +21,16 @@ public class GradeRequest {
     private String tenantId;
 
     @NotBlank(message = "Grade name is required")
-    @Size(min = 2, max = 100, message = "Grade name must be between 2 and 100 characters")
+    @Size(min = 2, max = 50, message = "Grade name must be between 2 and 50 characters")
     @Pattern(regexp = "^[a-zA-Z0-9\\s&\\-/]+$", message = "Grade name can only contain letters, numbers, spaces, &, -, and /")
     private String name;
 
     @NotBlank(message = "Grade code is required")
-    @Size(min = 2, max = 20, message = "Grade code must be between 2 and 20 characters")
+    @Size(min = 2, max = 10, message = "Grade code must be between 2 and 10 characters")
     @Pattern(regexp = "^[A-Z0-9\\-_]+$", message = "Grade code can only contain uppercase letters, numbers, -, and _")
     private String code;
 
-    @Size(max = 500, message = "Description must not exceed 500 characters")
+    @Size(max = 200, message = "Description must not exceed 200 characters")
     private String description;
 
     @Builder.Default

@@ -36,7 +36,7 @@ public class CityRequest {
     @Pattern(regexp = "^[A-Z0-9\\-_]+$", message = "City code can only contain uppercase letters, numbers, -, and _")
     private String code;
 
-    @Size(max = 20, message = "Pincode must not exceed 20 characters")
+    @Size(max = 10, message = "Pincode must not exceed 10 characters")
     private String pincode;
 
     @DecimalMin(value = "-90.0", message = "Latitude must be between -90 and 90")

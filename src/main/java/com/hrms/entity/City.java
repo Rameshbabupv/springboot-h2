@@ -47,7 +47,7 @@ public class City {
     @Column(nullable = false, length = 10)
     private String code;
 
-    @Column(length = 20)
+    @Column(length = 10)
     private String pincode;
 
     @Column(precision = 10, scale = 7)
