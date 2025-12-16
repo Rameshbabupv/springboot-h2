@@ -40,11 +40,11 @@ public class AuthController {
     /**
      * User signup - creates new tenant, company, and first user.
      *
-     * First user gets app_admin role automatically.
+     * First user gets all roles (ADMIN, MANAGER, PORTAL) for full access.
      * Creates:
      * - New tenant (Nano ID generated)
      * - New company record
-     * - First user account with app_admin role
+     * - First user account with all roles
      *
      * @param request Signup request with userId, companyName, email, phone, password
      * @return AuthResponse with user details and tokens

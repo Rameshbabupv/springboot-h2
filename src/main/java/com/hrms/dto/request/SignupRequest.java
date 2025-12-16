@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
  * First user signup creates:
  * - New tenant (Nano ID generated)
  * - New company
- * - First user account with app_admin role
+ * - First user account with all roles (ADMIN, MANAGER, PORTAL)
  */
 @Data
 @NoArgsConstructor

@@ -60,7 +60,7 @@ public class AuthResponse {
 
     /**
      * List of role names assigned to the user.
-     * e.g., ["app_admin"], ["manager", "portal"]
+     * e.g., ["ADMIN"], ["MANAGER", "PORTAL"]
      */
     private List<String> roles;
 

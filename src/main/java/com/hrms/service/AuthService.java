@@ -44,7 +44,7 @@ public class AuthService {
     /**
      * User signup - creates new tenant, company, and first user.
      *
-     * First user gets app_admin role to manage other users for the company.
+     * First user gets all roles (ADMIN, MANAGER, PORTAL) for full access.
      *
      * @param request Signup request with userId, companyName, email, phone, password
      * @return AuthResponse with JWT token and user details
@@ -104,9 +104,12 @@ public class AuthService {
             // Step 5: Set password in Keycloak
             keycloakService.setUserPassword(keycloakUserId, request.getPassword(), false);
 
-            // Step 6: Assign app_admin role (first user gets admin)
-            keycloakService.assignRoleToUser(keycloakUserId, "app_admin");
-            log.info("Role app_admin assigned to user: {}", keycloakUserId);
+            // Step 6: Assign all roles (first user gets full access)
+            List<String> allRoles = List.of("ADMIN", "MANAGER", "PORTAL");
+            for (String role : allRoles) {
+                keycloakService.assignRoleToUser(keycloakUserId, role);
+            }
+            log.info("All roles {} assigned to user: {}", allRoles, keycloakUserId);
 
             // Step 7: Create UserAccount in database
             UserAccount user = new UserAccount();
@@ -115,7 +118,7 @@ public class AuthService {
             user.setEmail(request.getEmail());
             user.setTenantId(tenantId);
             user.setCompanyId(company.getId()); // Link to company
-            user.setRole("app_admin"); // First user is always app_admin
+            user.setRole("ADMIN,MANAGER,PORTAL"); // First user gets all roles
             user.setPasswordHash("KEYCLOAK_MANAGED"); // Password managed by Keycloak
             user.setIsActive(true);
             user.setCreatedAt(OffsetDateTime.now());
@@ -133,13 +136,25 @@ public class AuthService {
             userCompanyAccessRepository.save(access);
             log.info("User-company association created");
 
-            // Step 9: Update Keycloak attributes with database IDs
+            // Step 9: Update Keycloak attributes with database IDs (for JWT claims)
             Map<String, Object> attributes = new HashMap<>();
+            attributes.put("tenant_id", tenantId);
             attributes.put("user_id", user.getId().toString());
             attributes.put("company_ids", List.of(company.getId().toString()));
+            attributes.put("current_company_id", company.getId().toString());
             keycloakService.updateUserAttributes(keycloakUserId, attributes);
 
-            // Step 10: Generate auth response
+            // Step 10: Get JWT from Keycloak
+            Map<String, Object> tokenResponse = keycloakService.getToken(
+                request.getUserId(),
+                request.getPassword()
+            );
+
+            String accessToken = (String) tokenResponse.get("access_token");
+            String refreshToken = (String) tokenResponse.get("refresh_token");
+            Integer expiresIn = (Integer) tokenResponse.get("expires_in");
+
+            // Step 11: Build auth response with actual JWT
             AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -147,11 +162,11 @@ public class AuthService {
                 .tenantId(tenantId)
                 .companyIds(List.of(company.getId()))
                 .currentCompanyId(company.getId())
-                .roles(List.of("app_admin"))
-                .accessToken("") // Will be set by frontend login
-                .refreshToken("")
-                .expiresIn(3600)
-                .message("Signup successful. User created with app_admin role.")
+                .roles(List.of("ADMIN", "MANAGER", "PORTAL"))
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(expiresIn != null ? expiresIn : 3600)
+                .message("Signup successful. User created with full access.")
                 .build();
 
             log.info("Signup completed successfully for user: {}", request.getUserId());
@@ -182,18 +197,25 @@ public class AuthService {
         try {
             log.info("Processing login for user: {}", request.getUsername());
 
-            // Step 1: Validate credentials with Keycloak
-            // Note: This would be done via Keycloak token endpoint in production
-            // For now, find user in database
+            // Step 1: Authenticate with Keycloak and get JWT
+            Map<String, Object> tokenResponse = keycloakService.getToken(
+                request.getUsername(),
+                request.getPassword()
+            );
 
+            String accessToken = (String) tokenResponse.get("access_token");
+            String refreshToken = (String) tokenResponse.get("refresh_token");
+            Integer expiresIn = (Integer) tokenResponse.get("expires_in");
+
+            // Step 2: Get user from database
             UserAccount user = userAccountRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AuthenticationException(
-                    "INVALID_CREDENTIALS",
-                    "Invalid username or password",
-                    401
+                    "USER_NOT_FOUND",
+                    "User not found in database",
+                    404
                 ));
 
-            // Step 2: Check user status
+            // Step 3: Check user status
             if (!user.getIsActive()) {
                 throw new AuthenticationException(
                     "ACCOUNT_INACTIVE",
@@ -202,7 +224,7 @@ public class AuthService {
                 );
             }
 
-            // Step 3: Get user's company access
+            // Step 4: Get user's company access
             List<UserCompanyAccess> companyAccess = userCompanyAccessRepository
                 .findByUserIdAndIsActiveTrue(user.getId());
 
@@ -220,21 +242,18 @@ public class AuthService {
 
             Long currentCompanyId = user.getCompanyId() != null ? user.getCompanyId() : companyIds.get(0);
 
-            // Step 4: Get user roles from database (source of truth)
-            // For now, query from user entity - will be enhanced with role table
-            List<String> roles = getDefaultRolesForUser(user);
+            // Step 5: Get user roles from database
+            List<String> roles = getRolesForUser(user);
 
-            // Step 5: Update Keycloak attributes with latest data
+            // Step 6: Update Keycloak attributes with latest data (for JWT claims)
             Map<String, Object> attributes = new HashMap<>();
-            attributes.put("company_ids", companyIds.stream()
-                .map(Object::toString)
-                .toList());
+            attributes.put("tenant_id", user.getTenantId());
             attributes.put("user_id", user.getId().toString());
+            attributes.put("company_ids", companyIds.stream().map(Object::toString).toList());
+            attributes.put("current_company_id", currentCompanyId.toString());
             keycloakService.updateUserAttributes(user.getKeycloakUserId(), attributes);
 
-            // Step 6: Build auth response
-            // Note: Access token and refresh token would be generated from Keycloak
-            // In a real implementation, this would return the actual JWT from Keycloak
+            // Step 7: Build auth response with actual JWT
             AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -243,9 +262,9 @@ public class AuthService {
                 .companyIds(companyIds)
                 .currentCompanyId(currentCompanyId)
                 .roles(roles)
-                .accessToken("") // Will be generated by frontend from Keycloak
-                .refreshToken("")
-                .expiresIn(3600)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(expiresIn != null ? expiresIn : 3600)
                 .message("Login successful")
                 .build();
 
@@ -293,16 +312,26 @@ public class AuthService {
      * @return TokenResponse with new access token
      * @throws AuthenticationException if refresh fails
      */
-    public TokenResponse refreshToken(String refreshToken) {
+    public TokenResponse refreshToken(String refreshTokenStr) {
         try {
             log.info("Refreshing token");
-            // Token refresh would be handled via Keycloak token endpoint
-            // This is typically a direct call to Keycloak from frontend
-            throw new AuthenticationException(
-                "TOKEN_REFRESH_ERROR",
-                "Token refresh not yet implemented",
-                501
-            );
+
+            Map<String, Object> tokenResponse = keycloakService.refreshToken(refreshTokenStr);
+
+            String accessToken = (String) tokenResponse.get("access_token");
+            String newRefreshToken = (String) tokenResponse.get("refresh_token");
+            Integer expiresIn = (Integer) tokenResponse.get("expires_in");
+
+            return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken)
+                .expiresIn(expiresIn != null ? expiresIn : 3600)
+                .tokenType("Bearer")
+                .build();
+
+        } catch (AuthenticationException e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error refreshing token", e);
             throw new AuthenticationException(
@@ -314,16 +343,18 @@ public class AuthService {
     }
 
     /**
-     * Get default roles for a user based on database configuration.
-     * This is temporary - will be replaced with a proper role management table.
+     * Get roles for a user from database.
+     * Parses comma-separated roles from user.role field.
      *
      * @param user UserAccount entity
      * @return List of role names
      */
-    private List<String> getDefaultRolesForUser(UserAccount user) {
-        // Placeholder: Return default role for now
-        // In production, query from user_roles table
-        return List.of("portal");
+    private List<String> getRolesForUser(UserAccount user) {
+        String roleStr = user.getRole();
+        if (roleStr == null || roleStr.isBlank()) {
+            return List.of("PORTAL"); // Default role
+        }
+        return Arrays.asList(roleStr.split(","));
     }
 
     /**

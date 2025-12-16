@@ -184,7 +184,7 @@ public class KeycloakService {
      * Assign a role to a user.
      *
      * @param keycloakUserId User's Keycloak ID (UUID)
-     * @param roleName Role name to assign (e.g., "app_admin", "manager", "portal")
+     * @param roleName Role name to assign (e.g., "ADMIN", "MANAGER", "PORTAL")
      * @throws AuthenticationException if role assignment fails
      */
     public void assignRoleToUser(String keycloakUserId, String roleName) {
@@ -324,6 +324,127 @@ public class KeycloakService {
         } catch (Exception e) {
             log.error("Keycloak health check failed", e);
             return false;
+        }
+    }
+
+
+    /**
+     * Get access token from Keycloak using username and password.
+     * Uses OAuth2 Resource Owner Password Credentials grant.
+     *
+     * @param username Username
+     * @param password Password
+     * @return Map containing access_token, refresh_token, expires_in
+     * @throws AuthenticationException if authentication fails
+     */
+    public Map<String, Object> getToken(String username, String password) {
+        try {
+            String tokenUrl = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+            // Build form data
+            org.springframework.util.LinkedMultiValueMap<String, String> formData = 
+                new org.springframework.util.LinkedMultiValueMap<>();
+            formData.add("grant_type", "password");
+            formData.add("client_id", clientId);
+            formData.add("client_secret", clientSecret);
+            formData.add("username", username);
+            formData.add("password", password);
+
+            // Set headers
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED);
+
+            org.springframework.http.HttpEntity<org.springframework.util.MultiValueMap<String, String>> request = 
+                new org.springframework.http.HttpEntity<>(formData, headers);
+
+            // Call Keycloak token endpoint
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.postForObject(tokenUrl, request, Map.class);
+
+            if (response == null || !response.containsKey("access_token")) {
+                throw new AuthenticationException(
+                    "TOKEN_ERROR",
+                    "Failed to get token from Keycloak",
+                    401
+                );
+            }
+
+            log.info("Token obtained for user: {}", username);
+            return response;
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Keycloak token error: {}", e.getResponseBodyAsString());
+            throw new AuthenticationException(
+                "INVALID_CREDENTIALS",
+                "Invalid username or password",
+                401
+            );
+        } catch (AuthenticationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error getting token from Keycloak", e);
+            throw new AuthenticationException(
+                "TOKEN_ERROR",
+                "Failed to get token: " + e.getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
+     * Refresh access token using refresh token.
+     *
+     * @param refreshToken Refresh token
+     * @return Map containing new access_token, refresh_token, expires_in
+     * @throws AuthenticationException if refresh fails
+     */
+    public Map<String, Object> refreshToken(String refreshToken) {
+        try {
+            String tokenUrl = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+            org.springframework.util.LinkedMultiValueMap<String, String> formData = 
+                new org.springframework.util.LinkedMultiValueMap<>();
+            formData.add("grant_type", "refresh_token");
+            formData.add("client_id", clientId);
+            formData.add("client_secret", clientSecret);
+            formData.add("refresh_token", refreshToken);
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED);
+
+            org.springframework.http.HttpEntity<org.springframework.util.MultiValueMap<String, String>> request = 
+                new org.springframework.http.HttpEntity<>(formData, headers);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.postForObject(tokenUrl, request, Map.class);
+
+            if (response == null || !response.containsKey("access_token")) {
+                throw new AuthenticationException(
+                    "TOKEN_REFRESH_ERROR",
+                    "Failed to refresh token",
+                    401
+                );
+            }
+
+            log.info("Token refreshed successfully");
+            return response;
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Token refresh error: {}", e.getResponseBodyAsString());
+            throw new AuthenticationException(
+                "TOKEN_REFRESH_ERROR",
+                "Refresh token expired or invalid",
+                401
+            );
+        } catch (AuthenticationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error refreshing token", e);
+            throw new AuthenticationException(
+                "TOKEN_REFRESH_ERROR",
+                "Failed to refresh token: " + e.getMessage(),
+                500
+            );
         }
     }
 }
