@@ -1,6 +1,7 @@
 package com.hrms.graphql.resolver;
 
 import com.hrms.entity.LeaveBalance;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.LeaveBalanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,11 @@ import java.util.Map;
 
 /**
  * GraphQL Resolver for LeaveBalance operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
  */
 @Slf4j
 @Controller
@@ -22,21 +28,24 @@ import java.util.Map;
 public class LeaveBalanceResolver {
 
     private final LeaveBalanceService leaveBalanceService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
-    public List<LeaveBalance> employeeLeaveBalances(@Argument String tenantId,
+    public List<LeaveBalance> employeeLeaveBalances(@Argument(name = "tenantId") String tenantIdArg,
                                                      @Argument Long companyId,
                                                      @Argument Long employeeId,
                                                      @Argument String leaveYear) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeeLeaveBalances - tenantId: {}, companyId: {}, employeeId: {}, leaveYear: {}",
                   tenantId, companyId, employeeId, leaveYear);
         return leaveBalanceService.getEmployeeBalances(tenantId, companyId, employeeId, leaveYear);
     }
 
     @QueryMapping
-    public List<LeaveBalance> leaveBalancesByCompany(@Argument String tenantId,
+    public List<LeaveBalance> leaveBalancesByCompany(@Argument(name = "tenantId") String tenantIdArg,
                                                       @Argument Long companyId,
                                                       @Argument String leaveYear) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: leaveBalancesByCompany - tenantId: {}, companyId: {}, leaveYear: {}",
                   tenantId, companyId, leaveYear);
         return leaveBalanceService.getBalancesByCompany(tenantId, companyId, leaveYear);
@@ -52,11 +61,12 @@ public class LeaveBalanceResolver {
     }
 
     @MutationMapping
-    public LeaveBalance creditLeaveBalance(@Argument String tenantId,
+    public LeaveBalance creditLeaveBalance(@Argument(name = "tenantId") String tenantIdArg,
                                             @Argument Long employeeId,
                                             @Argument Long leaveTypeId,
                                             @Argument String leaveYear,
                                             @Argument Double amount) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: creditLeaveBalance - employeeId: {}, leaveTypeId: {}, amount: {}",
                   employeeId, leaveTypeId, amount);
         return leaveBalanceService.creditBalance(tenantId, employeeId, leaveTypeId, leaveYear,
@@ -64,10 +74,11 @@ public class LeaveBalanceResolver {
     }
 
     @MutationMapping
-    public List<LeaveBalance> initializeEmployeeBalances(@Argument String tenantId,
+    public List<LeaveBalance> initializeEmployeeBalances(@Argument(name = "tenantId") String tenantIdArg,
                                                           @Argument Long companyId,
                                                           @Argument Long employeeId,
                                                           @Argument String leaveYear) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: initializeEmployeeBalances - employeeId: {}, leaveYear: {}",
                   employeeId, leaveYear);
         return leaveBalanceService.initializeEmployeeBalances(tenantId, companyId, employeeId, leaveYear);

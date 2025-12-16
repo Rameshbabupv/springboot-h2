@@ -5,6 +5,7 @@ import com.hrms.dto.response.SubmitEmployeeHolidaySelectionsResponse;
 import com.hrms.entity.Employee;
 import com.hrms.entity.EmployeeHolidaySelection;
 import com.hrms.entity.Holiday;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.EmployeeHolidaySelectionService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -22,25 +23,30 @@ import java.util.List;
 public class EmployeeHolidaySelectionResolver {
 
     private final EmployeeHolidaySelectionService holidaySelectionService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
-    public EmployeeHolidaySelectionResolver(EmployeeHolidaySelectionService holidaySelectionService) {
+    public EmployeeHolidaySelectionResolver(EmployeeHolidaySelectionService holidaySelectionService,
+                                            JwtClaimsExtractor jwtClaimsExtractor) {
         this.holidaySelectionService = holidaySelectionService;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Queries
 
     @QueryMapping
-    public List<Holiday> getAvailableOptionalHolidays(@Argument String tenantId,
+    public List<Holiday> getAvailableOptionalHolidays(@Argument(name = "tenantId") String tenantIdArg,
                                                        @Argument String financialYear,
                                                        @Argument Long employeeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidaySelectionService.getAvailableOptionalHolidays(tenantId, financialYear, employeeId);
     }
 
     @QueryMapping
     public EmployeeHolidaySelectionsResponse getEmployeeHolidaySelections(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long employeeId,
             @Argument String financialYear) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidaySelectionService.getEmployeeHolidaySelections(tenantId, employeeId, financialYear);
     }
 
@@ -48,10 +54,11 @@ public class EmployeeHolidaySelectionResolver {
 
     @MutationMapping
     public SubmitEmployeeHolidaySelectionsResponse submitEmployeeHolidaySelections(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long employeeId,
             @Argument String financialYear,
             @Argument List<Long> holidayIds) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidaySelectionService.submitEmployeeHolidaySelections(
                 tenantId, employeeId, financialYear, holidayIds);
     }

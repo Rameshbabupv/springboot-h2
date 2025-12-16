@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.entity.AttendancePolicyTemplate;
 import com.hrms.entity.Shift;
 import com.hrms.graphql.input.AttendancePolicyTemplateInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.AttendancePolicyTemplateService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -20,9 +21,12 @@ import java.util.stream.Collectors;
 public class AttendancePolicyTemplateResolver {
 
     private final AttendancePolicyTemplateService templateService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
-    public AttendancePolicyTemplateResolver(AttendancePolicyTemplateService templateService) {
+    public AttendancePolicyTemplateResolver(AttendancePolicyTemplateService templateService,
+                                           JwtClaimsExtractor jwtClaimsExtractor) {
         this.templateService = templateService;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Schema Mappings for field name differences
@@ -44,17 +48,19 @@ public class AttendancePolicyTemplateResolver {
 
     @QueryMapping
     public List<AttendancePolicyTemplate> attendancePolicyTemplates(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long companyId,
             @Argument Boolean isActive,
             @Argument String searchQuery) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.getTemplates(tenantId, companyId, isActive, searchQuery);
     }
 
     @QueryMapping
     public AttendancePolicyTemplate attendancePolicyTemplate(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.getTemplate(tenantId, id).orElse(null);
     }
 
@@ -62,31 +68,35 @@ public class AttendancePolicyTemplateResolver {
 
     @MutationMapping
     public AttendancePolicyTemplate createAttendancePolicyTemplate(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long companyId,
             @Argument AttendancePolicyTemplateInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.createTemplate(tenantId, companyId, input);
     }
 
     @MutationMapping
     public AttendancePolicyTemplate updateAttendancePolicyTemplate(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long id,
             @Argument AttendancePolicyTemplateInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.updateTemplate(tenantId, id, input);
     }
 
     @MutationMapping
     public Boolean deleteAttendancePolicyTemplate(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.deleteTemplate(tenantId, id);
     }
 
     @MutationMapping
     public AttendancePolicyTemplate setDefaultAttendancePolicyTemplate(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return templateService.setDefaultTemplate(tenantId, id);
     }
 }

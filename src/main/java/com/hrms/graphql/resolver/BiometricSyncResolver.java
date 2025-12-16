@@ -1,5 +1,6 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.BiometricSyncService;
 import com.hrms.service.BiometricSyncService.BiometricSyncResult;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +19,15 @@ import org.springframework.stereotype.Controller;
 public class BiometricSyncResolver {
 
     private final BiometricSyncService biometricSyncService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     /**
      * Sync biometric data from Supabase to HRMS punch_logs.
      */
     @MutationMapping
-    public BiometricSyncResult syncBiometricData(@Argument String tenantId,
+    public BiometricSyncResult syncBiometricData(@Argument(name = "tenantId") String tenantIdArg,
                                                   @Argument Long companyId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.info("GraphQL: syncBiometricData called for tenant: {}, company: {}", tenantId, companyId);
         return biometricSyncService.syncFromSupabase(tenantId, companyId);
     }

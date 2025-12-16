@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.StateRequest;
 import com.hrms.entity.State;
 import com.hrms.graphql.input.StateInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.StateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.List;
 public class StateResolver {
 
     private final StateService stateService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<State> states() {
@@ -31,12 +33,14 @@ public class StateResolver {
     }
 
     @QueryMapping
-    public List<State> statesByTenant(@Argument String tenantId) {
+    public List<State> statesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return stateService.getStatesByTenant(tenantId);
     }
 
     @QueryMapping
-    public List<State> activeStatesByTenant(@Argument String tenantId) {
+    public List<State> activeStatesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return stateService.getActiveStatesByTenant(tenantId);
     }
 
@@ -51,24 +55,32 @@ public class StateResolver {
     }
 
     @QueryMapping
-    public List<State> statesByTenantAndCountry(@Argument String tenantId, @Argument Long countryId) {
+    public List<State> statesByTenantAndCountry(@Argument(name = "tenantId") String tenantIdArg, @Argument Long countryId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return stateService.getStatesByTenantAndCountry(tenantId, countryId);
     }
 
     @QueryMapping
-    public List<State> searchStates(@Argument String tenantId, @Argument String searchTerm) {
+    public List<State> searchStates(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return stateService.searchStates(tenantId, searchTerm);
     }
 
     @MutationMapping
     public State createState(@Argument StateInput input) {
-        StateRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        StateRequest request = mapToRequest(input, tenantId);
         return stateService.createState(request);
     }
 
     @MutationMapping
     public State updateState(@Argument Long id, @Argument StateInput input) {
-        StateRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        StateRequest request = mapToRequest(input, tenantId);
         return stateService.updateState(id, request);
     }
 
@@ -78,9 +90,12 @@ public class StateResolver {
         return true;
     }
 
-    private StateRequest mapToRequest(StateInput input) {
+    private StateRequest mapToRequest(StateInput input, String tenantId) {
+        Long userId = jwtClaimsExtractor.getUserIdOrNull();
+        String userIdStr = userId != null ? userId.toString() : null;
+
         return StateRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .countryId(input.getCountryId())
                 .name(input.getName())
                 .code(input.getCode())
@@ -88,8 +103,8 @@ public class StateResolver {
                 .isUnionTerritory(input.getIsUnionTerritory())
                 .description(input.getDescription())
                 .isActive(input.getIsActive())
-                .createdBy(input.getCreatedBy())
-                .updatedBy(input.getUpdatedBy())
+                .createdBy(input.getCreatedBy() != null ? input.getCreatedBy() : userIdStr)
+                .updatedBy(input.getUpdatedBy() != null ? input.getUpdatedBy() : userIdStr)
                 .build();
     }
 }

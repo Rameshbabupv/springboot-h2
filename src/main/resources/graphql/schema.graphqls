@@ -388,6 +388,36 @@ type EmployeeTemplateField {
     updatedAt: String!
 }
 
+# Template Conflict Prevention Types
+type AvailableCriteriaResponse {
+    available: [CriteriaValue!]!
+    assigned: [AssignedCriteriaValue!]!
+    totalAvailable: Int!
+    totalAssigned: Int!
+}
+
+type CriteriaValue {
+    id: ID!
+    name: String!
+    code: String
+    isActive: Boolean!
+}
+
+type AssignedCriteriaValue {
+    id: ID!
+    name: String!
+    code: String
+    assignedToTemplate: TemplateReference!
+}
+
+type TemplateReference {
+    id: ID!
+    templateName: String!
+    templateCode: String!
+    effectiveFrom: String
+    effectiveTo: String
+}
+
 type Query {
     # Company queries
     companies: [Company!]!
@@ -500,6 +530,13 @@ type Query {
     employeeTemplates(tenantId: String!): [EmployeeTemplate!]!
     employeeTemplate(id: ID!): EmployeeTemplate
     activeEmployeeTemplates(tenantId: String!): [EmployeeTemplate!]!
+
+    # Template Conflict Prevention query
+    availableCriteriaValues(
+        tenantId: String!
+        criteriaType: String!
+        excludeTemplateId: ID
+    ): AvailableCriteriaResponse!
 
     # Employee Template Section queries
     employeeTemplateSections(templateId: ID!): [EmployeeTemplateSection!]!

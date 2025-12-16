@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.DesignationRequest;
 import com.hrms.entity.Designation;
 import com.hrms.graphql.input.DesignationInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.DesignationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.List;
 public class DesignationResolver {
 
     private final DesignationService designationService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<Designation> designations() {
@@ -31,12 +33,14 @@ public class DesignationResolver {
     }
 
     @QueryMapping
-    public List<Designation> designationsByTenant(@Argument String tenantId) {
+    public List<Designation> designationsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return designationService.getDesignationsByTenant(tenantId);
     }
 
     @QueryMapping
-    public List<Designation> activeDesignationsByTenant(@Argument String tenantId) {
+    public List<Designation> activeDesignationsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return designationService.getActiveDesignationsByTenant(tenantId);
     }
 
@@ -46,19 +50,28 @@ public class DesignationResolver {
     }
 
     @QueryMapping
-    public List<Designation> searchDesignations(@Argument String tenantId, @Argument String searchTerm) {
+    public List<Designation> searchDesignations(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return designationService.searchDesignations(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Designation createDesignation(@Argument DesignationInput input) {
-        DesignationRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+
+        DesignationRequest request = mapToRequest(input, tenantId);
         return designationService.createDesignation(request);
     }
 
     @MutationMapping
     public Designation updateDesignation(@Argument Long id, @Argument DesignationInput input) {
-        DesignationRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+
+        DesignationRequest request = mapToRequest(input, tenantId);
         return designationService.updateDesignation(id, request);
     }
 
@@ -68,9 +81,9 @@ public class DesignationResolver {
         return true;
     }
 
-    private DesignationRequest mapToRequest(DesignationInput input) {
+    private DesignationRequest mapToRequest(DesignationInput input, String tenantId) {
         return DesignationRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .description(input.getDescription())

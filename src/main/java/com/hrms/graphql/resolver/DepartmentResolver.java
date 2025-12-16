@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.DepartmentRequest;
 import com.hrms.entity.Department;
 import com.hrms.graphql.input.DepartmentInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +14,21 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+/**
+ * GraphQL Resolver for Department operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class DepartmentResolver {
 
     private final DepartmentService departmentService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<Department> departments() {
@@ -36,16 +46,26 @@ public class DepartmentResolver {
         return result;
     }
 
+    /**
+     * Get departments by tenant.
+     * tenantId is extracted from JWT; argument kept for backward compatibility.
+     */
     @QueryMapping
-    public List<Department> departmentsByTenant(@Argument String tenantId) {
+    public List<Department> departmentsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: departmentsByTenant - tenantId: {}", tenantId);
         List<Department> result = departmentService.getDepartmentsByTenant(tenantId);
         log.info("GraphQL Response: departmentsByTenant - returned {} departments for tenant: {}", result.size(), tenantId);
         return result;
     }
 
+    /**
+     * Get active departments by tenant.
+     * tenantId is extracted from JWT; argument kept for backward compatibility.
+     */
     @QueryMapping
-    public List<Department> activeDepartmentsByTenant(@Argument String tenantId) {
+    public List<Department> activeDepartmentsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: activeDepartmentsByTenant - tenantId: {}", tenantId);
         List<Department> result = departmentService.getActiveDepartmentsByTenant(tenantId);
         log.info("GraphQL Response: activeDepartmentsByTenant - returned {} active departments", result.size());
@@ -60,8 +80,15 @@ public class DepartmentResolver {
         return result;
     }
 
+    /**
+     * Search departments.
+     * tenantId is extracted from JWT; argument kept for backward compatibility.
+     */
     @QueryMapping
-    public List<Department> searchDepartments(@Argument String tenantId, @Argument String searchTerm) {
+    public List<Department> searchDepartments(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: searchDepartments - tenantId: {}, searchTerm: {}", tenantId, searchTerm);
         List<Department> result = departmentService.searchDepartments(tenantId, searchTerm);
         log.info("GraphQL Response: searchDepartments - returned {} departments matching: {}", result.size(), searchTerm);
@@ -70,8 +97,15 @@ public class DepartmentResolver {
 
     @MutationMapping
     public Department createDepartment(@Argument DepartmentInput input) {
-        log.debug("GraphQL Mutation: createDepartment - name: {}, code: {}", input.getName(), input.getCode());
-        DepartmentRequest request = mapToRequest(input);
+        // Get tenantId from JWT if not provided in input
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+
+        log.debug("GraphQL Mutation: createDepartment - name: {}, code: {}, tenantId: {}",
+                  input.getName(), input.getCode(), tenantId);
+
+        DepartmentRequest request = mapToRequest(input, tenantId);
         Department result = departmentService.createDepartment(request);
         log.info("GraphQL Response: createDepartment - created department id: {}, name: {}", result.getId(), result.getName());
         return result;
@@ -80,7 +114,12 @@ public class DepartmentResolver {
     @MutationMapping
     public Department updateDepartment(@Argument Long id, @Argument DepartmentInput input) {
         log.debug("GraphQL Mutation: updateDepartment - id: {}", id);
-        DepartmentRequest request = mapToRequest(input);
+
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+
+        DepartmentRequest request = mapToRequest(input, tenantId);
         Department result = departmentService.updateDepartment(id, request);
         log.info("GraphQL Response: updateDepartment - updated department id: {}, name: {}", result.getId(), result.getName());
         return result;
@@ -94,15 +133,18 @@ public class DepartmentResolver {
         return true;
     }
 
-    private DepartmentRequest mapToRequest(DepartmentInput input) {
+    private DepartmentRequest mapToRequest(DepartmentInput input, String tenantId) {
+        Long userId = jwtClaimsExtractor.getUserIdOrNull();
+        String userIdStr = userId != null ? userId.toString() : null;
+
         return DepartmentRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .description(input.getDescription())
                 .isActive(input.getIsActive())
-                .createdBy(input.getCreatedBy())
-                .updatedBy(input.getUpdatedBy())
+                .createdBy(input.getCreatedBy() != null ? input.getCreatedBy() : userIdStr)
+                .updatedBy(input.getUpdatedBy() != null ? input.getUpdatedBy() : userIdStr)
                 .build();
     }
 }

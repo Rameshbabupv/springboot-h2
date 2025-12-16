@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.entity.LeaveApplication;
 import com.hrms.enums.LeaveApplicationStatus;
 import com.hrms.graphql.input.LeaveApplicationInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.LeaveApplicationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,11 @@ import java.util.List;
 
 /**
  * GraphQL Resolver for LeaveApplication operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
  */
 @Slf4j
 @Controller
@@ -23,14 +29,16 @@ import java.util.List;
 public class LeaveApplicationResolver {
 
     private final LeaveApplicationService leaveApplicationService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
-    public List<LeaveApplication> leaveApplications(@Argument String tenantId,
+    public List<LeaveApplication> leaveApplications(@Argument(name = "tenantId") String tenantIdArg,
                                                      @Argument Long companyId,
                                                      @Argument Long employeeId,
                                                      @Argument LeaveApplicationStatus status,
                                                      @Argument String fromDate,
                                                      @Argument String toDate) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: leaveApplications - tenantId: {}, companyId: {}, employeeId: {}",
                   tenantId, companyId, employeeId);
         LocalDate from = fromDate != null ? LocalDate.parse(fromDate) : null;
@@ -45,34 +53,38 @@ public class LeaveApplicationResolver {
     }
 
     @QueryMapping
-    public LeaveApplication leaveApplicationByNumber(@Argument String tenantId,
+    public LeaveApplication leaveApplicationByNumber(@Argument(name = "tenantId") String tenantIdArg,
                                                       @Argument Long companyId,
                                                       @Argument String applicationNumber) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: leaveApplicationByNumber - applicationNumber: {}", applicationNumber);
         return leaveApplicationService.getLeaveApplicationByNumber(tenantId, companyId, applicationNumber).orElse(null);
     }
 
     @QueryMapping
-    public List<LeaveApplication> pendingApprovals(@Argument String tenantId,
+    public List<LeaveApplication> pendingApprovals(@Argument(name = "tenantId") String tenantIdArg,
                                                     @Argument Long companyId,
                                                     @Argument Long approverId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: pendingApprovals - approverId: {}", approverId);
         return leaveApplicationService.getPendingApprovals(tenantId, companyId, approverId);
     }
 
     @QueryMapping
-    public List<LeaveApplication> myLeaveApplications(@Argument String tenantId,
+    public List<LeaveApplication> myLeaveApplications(@Argument(name = "tenantId") String tenantIdArg,
                                                        @Argument Long companyId,
                                                        @Argument Long employeeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: myLeaveApplications - employeeId: {}", employeeId);
         return leaveApplicationService.getMyApplications(tenantId, companyId, employeeId);
     }
 
     @MutationMapping
-    public LeaveApplication createLeaveApplication(@Argument String tenantId,
+    public LeaveApplication createLeaveApplication(@Argument(name = "tenantId") String tenantIdArg,
                                                     @Argument Long companyId,
                                                     @Argument Long employeeId,
                                                     @Argument LeaveApplicationInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: createLeaveApplication - employeeId: {}, leaveTypeId: {}",
                   employeeId, input.getLeaveTypeId());
         LeaveApplication application = mapInputToEntity(input);

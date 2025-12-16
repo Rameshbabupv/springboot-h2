@@ -5,6 +5,7 @@ import com.hrms.entity.Section;
 import com.hrms.graphql.input.SectionInput;
 import com.hrms.repository.DepartmentRepository;
 import com.hrms.repository.SectionRepository;
+import com.hrms.security.JwtClaimsExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -14,6 +15,14 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+/**
+ * GraphQL Resolver for Section operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -21,6 +30,7 @@ public class SectionResolver {
 
     private final SectionRepository sectionRepository;
     private final DepartmentRepository departmentRepository;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<Section> sections() {
@@ -33,7 +43,8 @@ public class SectionResolver {
     }
 
     @QueryMapping
-    public List<Section> sectionsByTenant(@Argument String tenantId) {
+    public List<Section> sectionsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return sectionRepository.findByTenantId(tenantId);
     }
 
@@ -49,7 +60,10 @@ public class SectionResolver {
 
     @MutationMapping
     public Section createSection(@Argument SectionInput input) {
-        Section section = mapToEntity(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        Section section = mapToEntity(input, tenantId);
         return sectionRepository.save(section);
     }
 
@@ -58,7 +72,10 @@ public class SectionResolver {
         Section section = sectionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Section not found"));
 
-        updateEntityFromInput(section, input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        updateEntityFromInput(section, input, tenantId);
         return sectionRepository.save(section);
     }
 
@@ -71,14 +88,14 @@ public class SectionResolver {
         return false;
     }
 
-    private Section mapToEntity(SectionInput input) {
+    private Section mapToEntity(SectionInput input, String tenantId) {
         Section section = new Section();
-        updateEntityFromInput(section, input);
+        updateEntityFromInput(section, input, tenantId);
         return section;
     }
 
-    private void updateEntityFromInput(Section section, SectionInput input) {
-        section.setTenantId(input.getTenantId());
+    private void updateEntityFromInput(Section section, SectionInput input, String tenantId) {
+        section.setTenantId(tenantId);
         section.setName(input.getName());
         section.setCode(input.getCode());
         section.setDescription(input.getDescription());

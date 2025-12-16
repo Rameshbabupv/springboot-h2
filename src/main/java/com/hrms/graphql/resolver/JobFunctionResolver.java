@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.JobFunctionRequest;
 import com.hrms.entity.JobFunction;
 import com.hrms.graphql.input.JobFunctionInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.JobFunctionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +14,21 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+/**
+ * GraphQL Resolver for JobFunction operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class JobFunctionResolver {
 
     private final JobFunctionService jobFunctionService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<JobFunction> jobFunctions() {
@@ -31,12 +41,14 @@ public class JobFunctionResolver {
     }
 
     @QueryMapping
-    public List<JobFunction> jobFunctionsByTenant(@Argument String tenantId) {
+    public List<JobFunction> jobFunctionsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return jobFunctionService.getJobFunctionsByTenant(tenantId);
     }
 
     @QueryMapping
-    public List<JobFunction> activeJobFunctionsByTenant(@Argument String tenantId) {
+    public List<JobFunction> activeJobFunctionsByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return jobFunctionService.getActiveJobFunctionsByTenant(tenantId);
     }
 
@@ -46,24 +58,32 @@ public class JobFunctionResolver {
     }
 
     @QueryMapping
-    public List<JobFunction> jobFunctionsByGroup(@Argument String tenantId, @Argument String functionGroup) {
+    public List<JobFunction> jobFunctionsByGroup(@Argument(name = "tenantId") String tenantIdArg, @Argument String functionGroup) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return jobFunctionService.getJobFunctionsByGroup(tenantId, functionGroup);
     }
 
     @QueryMapping
-    public List<JobFunction> searchJobFunctions(@Argument String tenantId, @Argument String searchTerm) {
+    public List<JobFunction> searchJobFunctions(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return jobFunctionService.searchJobFunctions(tenantId, searchTerm);
     }
 
     @MutationMapping
     public JobFunction createJobFunction(@Argument JobFunctionInput input) {
-        JobFunctionRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        JobFunctionRequest request = mapToRequest(input, tenantId);
         return jobFunctionService.createJobFunction(request);
     }
 
     @MutationMapping
     public JobFunction updateJobFunction(@Argument Long id, @Argument JobFunctionInput input) {
-        JobFunctionRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        JobFunctionRequest request = mapToRequest(input, tenantId);
         return jobFunctionService.updateJobFunction(id, request);
     }
 
@@ -73,9 +93,9 @@ public class JobFunctionResolver {
         return true;
     }
 
-    private JobFunctionRequest mapToRequest(JobFunctionInput input) {
+    private JobFunctionRequest mapToRequest(JobFunctionInput input, String tenantId) {
         return JobFunctionRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .description(input.getDescription())

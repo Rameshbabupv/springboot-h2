@@ -4,6 +4,7 @@ import com.hrms.entity.Holiday;
 import com.hrms.entity.HolidayCompanyMapping;
 import com.hrms.entity.HolidayLocationMapping;
 import com.hrms.graphql.input.HolidayInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.HolidayService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -21,50 +22,58 @@ import java.util.stream.Collectors;
 public class HolidayResolver {
 
     private final HolidayService holidayService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
-    public HolidayResolver(HolidayService holidayService) {
+    public HolidayResolver(HolidayService holidayService, JwtClaimsExtractor jwtClaimsExtractor) {
         this.holidayService = holidayService;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Queries
 
     @QueryMapping
-    public List<Holiday> holidays(@Argument String tenantId,
+    public List<Holiday> holidays(@Argument(name = "tenantId") String tenantIdArg,
                                   @Argument Long companyId,
                                   @Argument Integer year,
                                   @Argument Long locationId,
                                   @Argument String searchQuery) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.getHolidays(tenantId, companyId, year, locationId, searchQuery);
     }
 
     @QueryMapping
-    public Holiday holiday(@Argument String tenantId, @Argument Long id) {
+    public Holiday holiday(@Argument(name = "tenantId") String tenantIdArg, @Argument Long id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.getHoliday(tenantId, id).orElse(null);
     }
 
     // Mutations
 
     @MutationMapping
-    public Holiday createHoliday(@Argument String tenantId,
+    public Holiday createHoliday(@Argument(name = "tenantId") String tenantIdArg,
                                  @Argument HolidayInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.createHoliday(tenantId, input);
     }
 
     @MutationMapping
-    public Holiday updateHoliday(@Argument String tenantId,
+    public Holiday updateHoliday(@Argument(name = "tenantId") String tenantIdArg,
                                  @Argument Long id,
                                  @Argument HolidayInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.updateHoliday(tenantId, id, input);
     }
 
     @MutationMapping
-    public Boolean deleteHoliday(@Argument String tenantId, @Argument Long id) {
+    public Boolean deleteHoliday(@Argument(name = "tenantId") String tenantIdArg, @Argument Long id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.deleteHoliday(tenantId, id);
     }
 
     @MutationMapping
-    public List<Holiday> bulkCreateHolidays(@Argument String tenantId,
+    public List<Holiday> bulkCreateHolidays(@Argument(name = "tenantId") String tenantIdArg,
                                             @Argument List<HolidayInput> inputs) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return holidayService.bulkCreateHolidays(tenantId, inputs);
     }
 

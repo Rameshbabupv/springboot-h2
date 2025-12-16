@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.EmploymentTypeRequest;
 import com.hrms.entity.EmploymentType;
 import com.hrms.graphql.input.EmploymentTypeInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.EmploymentTypeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +14,21 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+/**
+ * GraphQL Resolver for EmploymentType operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class EmploymentTypeResolver {
 
     private final EmploymentTypeService employmentTypeService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<EmploymentType> employmentTypes() {
@@ -31,7 +41,8 @@ public class EmploymentTypeResolver {
     }
 
     @QueryMapping
-    public List<EmploymentType> employmentTypesByTenant(@Argument String tenantId) {
+    public List<EmploymentType> employmentTypesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return employmentTypeService.getEmploymentTypesByTenant(tenantId);
     }
 
@@ -41,19 +52,26 @@ public class EmploymentTypeResolver {
     }
 
     @QueryMapping
-    public List<EmploymentType> searchEmploymentTypes(@Argument String tenantId, @Argument String searchTerm) {
+    public List<EmploymentType> searchEmploymentTypes(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return employmentTypeService.searchEmploymentTypes(tenantId, searchTerm);
     }
 
     @MutationMapping
     public EmploymentType createEmploymentType(@Argument EmploymentTypeInput input) {
-        EmploymentTypeRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        EmploymentTypeRequest request = mapToRequest(input, tenantId);
         return employmentTypeService.createEmploymentType(request);
     }
 
     @MutationMapping
     public EmploymentType updateEmploymentType(@Argument Long id, @Argument EmploymentTypeInput input) {
-        EmploymentTypeRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        EmploymentTypeRequest request = mapToRequest(input, tenantId);
         return employmentTypeService.updateEmploymentType(id, request);
     }
 
@@ -63,9 +81,9 @@ public class EmploymentTypeResolver {
         return true;
     }
 
-    private EmploymentTypeRequest mapToRequest(EmploymentTypeInput input) {
+    private EmploymentTypeRequest mapToRequest(EmploymentTypeInput input, String tenantId) {
         return EmploymentTypeRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .description(input.getDescription())

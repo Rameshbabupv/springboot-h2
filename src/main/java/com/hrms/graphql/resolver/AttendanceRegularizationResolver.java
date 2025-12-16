@@ -9,6 +9,7 @@ import com.hrms.enums.ApprovalStatus;
 import com.hrms.graphql.input.RegularizationInput;
 import com.hrms.repository.EmployeeRepository;
 import com.hrms.repository.UserAccountRepository;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.AttendanceRegularizationService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -29,13 +30,16 @@ public class AttendanceRegularizationResolver {
     private final AttendanceRegularizationService regularizationService;
     private final EmployeeRepository employeeRepository;
     private final UserAccountRepository userAccountRepository;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     public AttendanceRegularizationResolver(AttendanceRegularizationService regularizationService,
                                            EmployeeRepository employeeRepository,
-                                           UserAccountRepository userAccountRepository) {
+                                           UserAccountRepository userAccountRepository,
+                                           JwtClaimsExtractor jwtClaimsExtractor) {
         this.regularizationService = regularizationService;
         this.employeeRepository = employeeRepository;
         this.userAccountRepository = userAccountRepository;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Schema Mappings for nested objects
@@ -95,7 +99,7 @@ public class AttendanceRegularizationResolver {
     // Queries
 
     @QueryMapping
-    public List<AttendanceRegularization> regularizations(@Argument String tenantId,
+    public List<AttendanceRegularization> regularizations(@Argument(name = "tenantId") String tenantIdArg,
                                                            @Argument Long companyId,
                                                            @Argument ApprovalStatus status,
                                                            @Argument Long employeeId,
@@ -105,6 +109,7 @@ public class AttendanceRegularizationResolver {
                                                            @Argument Long departmentId,
                                                            @Argument String searchQuery,
                                                            @Argument Long userId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Parse date filters
         LocalDate from = dateFrom != null ? LocalDate.parse(dateFrom, DateTimeFormatter.ISO_DATE) : null;
         LocalDate to = dateTo != null ? LocalDate.parse(dateTo, DateTimeFormatter.ISO_DATE) : null;
@@ -133,8 +138,9 @@ public class AttendanceRegularizationResolver {
     }
 
     @QueryMapping
-    public List<AttendanceRegularization> pendingRegularizations(@Argument String tenantId,
+    public List<AttendanceRegularization> pendingRegularizations(@Argument(name = "tenantId") String tenantIdArg,
                                                                   @Argument Long companyId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return regularizationService.getPendingRegularizations(tenantId, companyId);
     }
 
@@ -142,11 +148,12 @@ public class AttendanceRegularizationResolver {
      * Get employee's own regularization history (Employee Portal self-service).
      */
     @QueryMapping
-    public List<AttendanceRegularization> myRegularizations(@Argument String tenantId,
+    public List<AttendanceRegularization> myRegularizations(@Argument(name = "tenantId") String tenantIdArg,
                                                              @Argument Long employeeId,
                                                              @Argument ApprovalStatus status,
                                                              @Argument String dateFrom,
                                                              @Argument String dateTo) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate from = dateFrom != null ? LocalDate.parse(dateFrom, DateTimeFormatter.ISO_DATE) : null;
         LocalDate to = dateTo != null ? LocalDate.parse(dateTo, DateTimeFormatter.ISO_DATE) : null;
         return regularizationService.getEmployeeRegularizations(tenantId, employeeId, status, from, to);
@@ -155,44 +162,49 @@ public class AttendanceRegularizationResolver {
     // Mutations
 
     @MutationMapping
-    public AttendanceRegularization submitRegularization(@Argument String tenantId,
+    public AttendanceRegularization submitRegularization(@Argument(name = "tenantId") String tenantIdArg,
                                                           @Argument Long companyId,
                                                           @Argument RegularizationInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Use employeeId from input (self-service) or from authenticated user context
         Long employeeId = input.getEmployeeId();
         return regularizationService.submitRegularization(tenantId, companyId, employeeId, input);
     }
 
     @MutationMapping
-    public AttendanceRegularization approveRegularization(@Argument String tenantId,
+    public AttendanceRegularization approveRegularization(@Argument(name = "tenantId") String tenantIdArg,
                                                            @Argument Long id,
                                                            @Argument String remarks) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Note: approverId should come from authenticated user context
         return regularizationService.approveRegularization(tenantId, id, null, remarks);
     }
 
     @MutationMapping
-    public AttendanceRegularization rejectRegularization(@Argument String tenantId,
+    public AttendanceRegularization rejectRegularization(@Argument(name = "tenantId") String tenantIdArg,
                                                           @Argument Long id,
                                                           @Argument String reason) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Note: approverId should come from authenticated user context
         return regularizationService.rejectRegularization(tenantId, id, null, reason);
     }
 
     @MutationMapping
     public AttendanceRegularizationService.BulkRegularizationResult bulkApproveRegularizations(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument List<Long> ids,
             @Argument String remarks) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Note: approverId should come from authenticated user context
         return regularizationService.bulkApproveRegularizations(tenantId, ids, null, remarks);
     }
 
     @MutationMapping
     public AttendanceRegularizationService.BulkRegularizationResult bulkRejectRegularizations(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument List<Long> ids,
             @Argument String reason) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         // Note: approverId should come from authenticated user context
         return regularizationService.bulkRejectRegularizations(tenantId, ids, null, reason);
     }

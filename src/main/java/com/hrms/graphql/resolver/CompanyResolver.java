@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.*;
 import com.hrms.entity.*;
 import com.hrms.graphql.input.*;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.CompanyService;
 import com.hrms.util.LoggingUtil;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.List;
 public class CompanyResolver {
 
     private final CompanyService companyService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     // ==================== Company Queries ====================
 
@@ -49,7 +51,8 @@ public class CompanyResolver {
     }
 
     @QueryMapping
-    public List<Company> companiesByTenant(@Argument String tenantId) {
+    public List<Company> companiesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: companiesByTenant - tenantId: {}", tenantId);
         List<Company> result = companyService.getCompaniesByTenant(tenantId);
         log.info("GraphQL Response: companiesByTenant - returned {} companies for tenant: {}", result.size(), tenantId);
@@ -68,10 +71,14 @@ public class CompanyResolver {
 
     @MutationMapping
     public Company createCompany(@Argument CompanyInput input) {
-        log.debug("GraphQL Mutation: createCompany - name: {}, code: {}, tenantId: {}",
-                  input.getName(), input.getCode(), input.getTenantId());
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
 
-        CompanyRequest request = mapToCompanyRequest(input);
+        log.debug("GraphQL Mutation: createCompany - name: {}, code: {}, tenantId: {}",
+                  input.getName(), input.getCode(), tenantId);
+
+        CompanyRequest request = mapToCompanyRequest(input, tenantId);
         Company result = companyService.createCompany(request);
 
         log.info("GraphQL Response: createCompany - created company id: {}, name: {}, code: {}",
@@ -81,8 +88,12 @@ public class CompanyResolver {
 
     @MutationMapping
     public Company updateCompany(@Argument Long id, @Argument CompanyInput input) {
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+
         log.debug("GraphQL Mutation: updateCompany - id: {}, name: {}", id, input.getName());
-        CompanyRequest request = mapToCompanyRequest(input);
+        CompanyRequest request = mapToCompanyRequest(input, tenantId);
         Company result = companyService.updateCompany(id, request);
         log.info("GraphQL Response: updateCompany - updated company id: {}, name: {}", result.getId(), result.getName());
         return result;
@@ -259,9 +270,9 @@ public class CompanyResolver {
 
     // ==================== Mapper Methods ====================
 
-    private CompanyRequest mapToCompanyRequest(CompanyInput input) {
+    private CompanyRequest mapToCompanyRequest(CompanyInput input, String tenantId) {
         return CompanyRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .code(input.getCode())
                 .name(input.getName())
                 .shortName(input.getShortName())

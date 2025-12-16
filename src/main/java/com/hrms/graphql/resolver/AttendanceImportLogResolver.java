@@ -5,6 +5,7 @@ import com.hrms.entity.AttendanceImportLog;
 import com.hrms.entity.Company;
 import com.hrms.entity.UserAccount;
 import com.hrms.enums.ImportStatus;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.AttendanceImportLogService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -22,9 +23,12 @@ import java.util.List;
 public class AttendanceImportLogResolver {
 
     private final AttendanceImportLogService importLogService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
-    public AttendanceImportLogResolver(AttendanceImportLogService importLogService) {
+    public AttendanceImportLogResolver(AttendanceImportLogService importLogService,
+                                      JwtClaimsExtractor jwtClaimsExtractor) {
         this.importLogService = importLogService;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Schema Mappings for nested objects
@@ -43,14 +47,14 @@ public class AttendanceImportLogResolver {
 
     @QueryMapping
     public AttendanceImportLogService.ImportLogPage getAttendanceImportHistory(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long companyId,
             @Argument Integer limit,
             @Argument Integer offset,
             @Argument ImportStatus status,
             @Argument String fromDate,
             @Argument String toDate) {
-
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         int actualLimit = limit != null ? limit : 10;
         int actualOffset = offset != null ? offset : 0;
         OffsetDateTime from = fromDate != null ? parseDateTime(fromDate) : null;
@@ -61,18 +65,19 @@ public class AttendanceImportLogResolver {
 
     @QueryMapping
     public AttendanceImportLog getAttendanceImportDetails(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long importId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return importLogService.getImportDetails(tenantId, importId).orElse(null);
     }
 
     @QueryMapping
     public List<AttendanceImportError> getImportErrors(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument Long importId,
             @Argument Integer limit,
             @Argument Integer offset) {
-
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         int actualLimit = limit != null ? limit : 50;
         int actualOffset = offset != null ? offset : 0;
 

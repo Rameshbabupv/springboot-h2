@@ -2,6 +2,7 @@ package com.hrms.graphql.resolver;
 
 import com.hrms.entity.LeavePolicy;
 import com.hrms.graphql.input.LeavePolicyInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.LeavePolicyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,11 @@ import java.util.List;
 
 /**
  * GraphQL Resolver for LeavePolicy operations.
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
  */
 @Slf4j
 @Controller
@@ -22,11 +28,13 @@ import java.util.List;
 public class LeavePolicyResolver {
 
     private final LeavePolicyService leavePolicyService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
-    public List<LeavePolicy> leavePolicies(@Argument String tenantId,
+    public List<LeavePolicy> leavePolicies(@Argument(name = "tenantId") String tenantIdArg,
                                             @Argument Long companyId,
                                             @Argument String status) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: leavePolicies - tenantId: {}, companyId: {}, status: {}",
                   tenantId, companyId, status);
         return leavePolicyService.getLeavePolicies(tenantId, companyId, status);
@@ -45,7 +53,8 @@ public class LeavePolicyResolver {
     }
 
     @QueryMapping
-    public LeavePolicy defaultLeavePolicy(@Argument String tenantId, @Argument Long companyId) {
+    public LeavePolicy defaultLeavePolicy(@Argument(name = "tenantId") String tenantIdArg, @Argument Long companyId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: defaultLeavePolicy - tenantId: {}, companyId: {}", tenantId, companyId);
         return leavePolicyService.getDefaultLeavePolicy(tenantId, companyId).orElse(null);
     }
@@ -57,9 +66,10 @@ public class LeavePolicyResolver {
     }
 
     @MutationMapping
-    public LeavePolicy createLeavePolicy(@Argument String tenantId,
+    public LeavePolicy createLeavePolicy(@Argument(name = "tenantId") String tenantIdArg,
                                           @Argument Long companyId,
                                           @Argument LeavePolicyInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: createLeavePolicy - tenantId: {}, companyId: {}, code: {}",
                   tenantId, companyId, input.getCode());
         LeavePolicy policy = mapInputToEntity(input);

@@ -5,6 +5,7 @@ import com.hrms.entity.Employee;
 import com.hrms.entity.PunchLog;
 import com.hrms.enums.PunchStatus;
 import com.hrms.graphql.input.PunchLogInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.PunchLogService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -25,9 +26,11 @@ import java.util.List;
 public class PunchLogResolver {
 
     private final PunchLogService punchLogService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
-    public PunchLogResolver(PunchLogService punchLogService) {
+    public PunchLogResolver(PunchLogService punchLogService, JwtClaimsExtractor jwtClaimsExtractor) {
         this.punchLogService = punchLogService;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Schema Mappings for nested objects
@@ -45,12 +48,13 @@ public class PunchLogResolver {
     // Queries
 
     @QueryMapping
-    public List<PunchLog> punchLogs(@Argument String tenantId,
+    public List<PunchLog> punchLogs(@Argument(name = "tenantId") String tenantIdArg,
                                      @Argument Long companyId,
                                      @Argument String dateFrom,
                                      @Argument String dateTo,
                                      @Argument Long employeeId,
                                      @Argument PunchStatus status) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         OffsetDateTime from = parseDateTime(dateFrom);
         OffsetDateTime to = parseDateTime(dateTo);
         return punchLogService.getPunchLogs(tenantId, companyId, from, to, employeeId, status);
@@ -59,23 +63,26 @@ public class PunchLogResolver {
     // Mutations
 
     @MutationMapping
-    public PunchLog recordPunch(@Argument String tenantId,
+    public PunchLog recordPunch(@Argument(name = "tenantId") String tenantIdArg,
                                 @Argument Long companyId,
                                 @Argument PunchLogInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return punchLogService.recordPunch(tenantId, companyId, input);
     }
 
     @MutationMapping
-    public Integer bulkImportPunches(@Argument String tenantId,
+    public Integer bulkImportPunches(@Argument(name = "tenantId") String tenantIdArg,
                                      @Argument Long companyId,
                                      @Argument List<PunchLogInput> inputs) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return punchLogService.bulkImportPunches(tenantId, companyId, inputs);
     }
 
     @MutationMapping
-    public PunchLog mapUnmatchedPunch(@Argument String tenantId,
+    public PunchLog mapUnmatchedPunch(@Argument(name = "tenantId") String tenantIdArg,
                                       @Argument Long punchLogId,
                                       @Argument Long employeeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return punchLogService.mapUnmatchedPunch(tenantId, punchLogId, employeeId);
     }
 

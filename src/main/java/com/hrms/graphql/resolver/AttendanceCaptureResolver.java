@@ -6,6 +6,7 @@ import com.hrms.entity.Employee;
 import com.hrms.graphql.input.ExcelRowInput;
 import com.hrms.repository.DailyAttendanceRepository;
 import com.hrms.repository.EmployeeRepository;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.AttendanceCaptureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -31,24 +32,27 @@ public class AttendanceCaptureResolver {
     private final AttendanceCaptureService captureService;
     private final EmployeeRepository employeeRepository;
     private final DailyAttendanceRepository attendanceRepository;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     // Excel Import Mutations
 
     @MutationMapping
-    public ValidationResult validateAttendanceImport(@Argument String tenantId,
+    public ValidationResult validateAttendanceImport(@Argument(name = "tenantId") String tenantIdArg,
                                                       @Argument Long companyId,
                                                       @Argument List<ExcelRowInput> rows) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return captureService.validateAttendanceImport(tenantId, companyId, rows);
     }
 
     @MutationMapping
-    public ImportResult importAttendanceFromExcel(@Argument String tenantId,
+    public ImportResult importAttendanceFromExcel(@Argument(name = "tenantId") String tenantIdArg,
                                                    @Argument Long companyId,
                                                    @Argument List<ExcelRowInput> rows,
                                                    @Argument Boolean overwriteExisting,
                                                    @Argument String fileName,
                                                    @Argument Long fileSizeBytes,
                                                    @Argument Long importedByUserId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return captureService.importAttendanceFromExcel(tenantId, companyId, rows, overwriteExisting,
                 fileName, fileSizeBytes, importedByUserId);
     }
@@ -56,12 +60,13 @@ public class AttendanceCaptureResolver {
     // Employee Search Queries for Attendance Capture
 
     @QueryMapping
-    public List<EmployeeBasicResponse> searchEmployeesForAttendance(@Argument String tenantId,
+    public List<EmployeeBasicResponse> searchEmployeesForAttendance(@Argument(name = "tenantId") String tenantIdArg,
                                                                      @Argument Long companyId,
                                                                      @Argument Long locationId,
                                                                      @Argument Long departmentId,
                                                                      @Argument String searchText,
                                                                      @Argument Integer limit) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         int resultLimit = limit != null ? limit : 20;
 
         // Get employees with filters
@@ -75,11 +80,12 @@ public class AttendanceCaptureResolver {
     }
 
     @QueryMapping
-    public List<EmployeeAttendanceRow> employeesForAttendanceGrid(@Argument String tenantId,
+    public List<EmployeeAttendanceRow> employeesForAttendanceGrid(@Argument(name = "tenantId") String tenantIdArg,
                                                                     @Argument Long companyId,
                                                                     @Argument Long locationId,
                                                                     @Argument Long departmentId,
                                                                     @Argument String date) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate attendanceDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
 
         // Get employees

@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.CountryRequest;
 import com.hrms.entity.Country;
 import com.hrms.graphql.input.CountryInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.CountryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.List;
 public class CountryResolver {
 
     private final CountryService countryService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<Country> countries() {
@@ -31,12 +33,14 @@ public class CountryResolver {
     }
 
     @QueryMapping
-    public List<Country> countriesByTenant(@Argument String tenantId) {
+    public List<Country> countriesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return countryService.getCountriesByTenant(tenantId);
     }
 
     @QueryMapping
-    public List<Country> activeCountriesByTenant(@Argument String tenantId) {
+    public List<Country> activeCountriesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return countryService.getActiveCountriesByTenant(tenantId);
     }
 
@@ -46,19 +50,26 @@ public class CountryResolver {
     }
 
     @QueryMapping
-    public List<Country> searchCountries(@Argument String tenantId, @Argument String searchTerm) {
+    public List<Country> searchCountries(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return countryService.searchCountries(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Country createCountry(@Argument CountryInput input) {
-        CountryRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        CountryRequest request = mapToRequest(input, tenantId);
         return countryService.createCountry(request);
     }
 
     @MutationMapping
     public Country updateCountry(@Argument Long id, @Argument CountryInput input) {
-        CountryRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        CountryRequest request = mapToRequest(input, tenantId);
         return countryService.updateCountry(id, request);
     }
 
@@ -68,17 +79,20 @@ public class CountryResolver {
         return true;
     }
 
-    private CountryRequest mapToRequest(CountryInput input) {
+    private CountryRequest mapToRequest(CountryInput input, String tenantId) {
+        Long userId = jwtClaimsExtractor.getUserIdOrNull();
+        String userIdStr = userId != null ? userId.toString() : null;
+
         return CountryRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .currencyCode(input.getCurrencyCode())
                 .phoneCode(input.getPhoneCode())
                 .description(input.getDescription())
                 .isActive(input.getIsActive())
-                .createdBy(input.getCreatedBy())
-                .updatedBy(input.getUpdatedBy())
+                .createdBy(input.getCreatedBy() != null ? input.getCreatedBy() : userIdStr)
+                .updatedBy(input.getUpdatedBy() != null ? input.getUpdatedBy() : userIdStr)
                 .build();
     }
 }

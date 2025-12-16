@@ -4,6 +4,7 @@ import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeePageResponse;
 import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.EmployeeService;
 import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,11 @@ import java.util.List;
 /**
  * GraphQL Resolver for Employee Operations
  * PRIMARY API for employee data access (REST is only for auth)
+ *
+ * JWT Integration:
+ * - tenantId is extracted from JWT token (preferred)
+ * - @Argument tenantId kept for backward compatibility during migration
+ * - JWT takes precedence when available
  */
 @Slf4j
 @Controller
@@ -27,13 +33,15 @@ public class EmployeeResolver {
 
     private final EmployeeService employeeService;
     private final OrganizationalScopeService organizationalScopeService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     // =====================================================
     // QUERY OPERATIONS
     // =====================================================
 
     @QueryMapping
-    public EmployeeResponse employeeById(@Argument String tenantId, @Argument String id) {
+    public EmployeeResponse employeeById(@Argument(name = "tenantId") String tenantIdArg, @Argument String id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeeById - tenantId: {}, id: {}", tenantId, id);
         EmployeeResponse result = employeeService.getEmployeeById(tenantId, Long.parseLong(id));
         log.info("GraphQL Response: employeeById - returned employee: {}", result.getEmployeeName());
@@ -41,7 +49,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public EmployeeResponse employeeByEmpId(@Argument String tenantId, @Argument String empId) {
+    public EmployeeResponse employeeByEmpId(@Argument(name = "tenantId") String tenantIdArg, @Argument String empId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeeByEmpId - tenantId: {}, empId: {}", tenantId, empId);
         EmployeeResponse result = employeeService.getEmployeeByEmpId(tenantId, empId);
         log.info("GraphQL Response: employeeByEmpId - returned employee: {}", result.getEmployeeName());
@@ -49,7 +58,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByTenant(@Argument String tenantId) {
+    public List<EmployeeResponse> employeesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByTenant - tenantId: {}", tenantId);
         List<EmployeeResponse> result = employeeService.getAllEmployeesByTenant(tenantId);
         log.info("GraphQL Response: employeesByTenant - returned {} employees for tenant: {}", result.size(), tenantId);
@@ -57,7 +67,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByCompany(@Argument String tenantId, @Argument String companyId) {
+    public List<EmployeeResponse> employeesByCompany(@Argument(name = "tenantId") String tenantIdArg, @Argument String companyId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByCompany - tenantId: {}, companyId: {}", tenantId, companyId);
         List<EmployeeResponse> result = employeeService.getEmployeesByCompany(tenantId, Long.parseLong(companyId));
         log.info("GraphQL Response: employeesByCompany - returned {} employees for company: {}", result.size(), companyId);
@@ -65,7 +76,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByDepartment(@Argument String tenantId, @Argument String departmentId) {
+    public List<EmployeeResponse> employeesByDepartment(@Argument(name = "tenantId") String tenantIdArg, @Argument String departmentId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByDepartment - tenantId: {}, departmentId: {}", tenantId, departmentId);
         List<EmployeeResponse> result = employeeService.getEmployeesByDepartment(tenantId, Long.parseLong(departmentId));
         log.info("GraphQL Response: employeesByDepartment - returned {} employees for department: {}", result.size(), departmentId);
@@ -73,7 +85,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByDesignation(@Argument String tenantId, @Argument String designationId) {
+    public List<EmployeeResponse> employeesByDesignation(@Argument(name = "tenantId") String tenantIdArg, @Argument String designationId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByDesignation - tenantId: {}, designationId: {}", tenantId, designationId);
         List<EmployeeResponse> result = employeeService.getEmployeesByDesignation(tenantId, Long.parseLong(designationId));
         log.info("GraphQL Response: employeesByDesignation - returned {} employees for designation: {}", result.size(), designationId);
@@ -81,7 +94,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByStatus(@Argument String tenantId, @Argument String status) {
+    public List<EmployeeResponse> employeesByStatus(@Argument(name = "tenantId") String tenantIdArg, @Argument String status) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByStatus - tenantId: {}, status: {}", tenantId, status);
         List<EmployeeResponse> result = employeeService.getEmployeesByStatus(tenantId, status);
         log.info("GraphQL Response: employeesByStatus - returned {} employees with status: {}", result.size(), status);
@@ -89,7 +103,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> employeesByReportingManager(@Argument String tenantId, @Argument String managerId) {
+    public List<EmployeeResponse> employeesByReportingManager(@Argument(name = "tenantId") String tenantIdArg, @Argument String managerId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeesByReportingManager - tenantId: {}, managerId: {}", tenantId, managerId);
         List<EmployeeResponse> result = employeeService.getEmployeesByReportingManager(tenantId, Long.parseLong(managerId));
         log.info("GraphQL Response: employeesByReportingManager - returned {} employees for manager: {}", result.size(), managerId);
@@ -97,7 +112,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public List<EmployeeResponse> searchEmployees(@Argument String tenantId, @Argument String searchTerm) {
+    public List<EmployeeResponse> searchEmployees(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: searchEmployees - tenantId: {}, searchTerm: {}", tenantId, searchTerm);
         List<EmployeeResponse> result = employeeService.searchEmployees(tenantId, searchTerm);
         log.info("GraphQL Response: searchEmployees - returned {} employees matching: {}", result.size(), searchTerm);
@@ -105,7 +121,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public Long employeeCount(@Argument String tenantId) {
+    public Long employeeCount(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeeCount - tenantId: {}", tenantId);
         Long result = employeeService.getEmployeeCountByTenant(tenantId);
         log.info("GraphQL Response: employeeCount - total count: {} for tenant: {}", result, tenantId);
@@ -113,7 +130,8 @@ public class EmployeeResolver {
     }
 
     @QueryMapping
-    public Long employeeCountByStatus(@Argument String tenantId, @Argument String status) {
+    public Long employeeCountByStatus(@Argument(name = "tenantId") String tenantIdArg, @Argument String status) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Query: employeeCountByStatus - tenantId: {}, status: {}", tenantId, status);
         Long result = employeeService.getEmployeeCountByStatus(tenantId, status);
         log.info("GraphQL Response: employeeCountByStatus - count: {} for status: {}", result, status);
@@ -136,7 +154,7 @@ public class EmployeeResolver {
      */
     @QueryMapping
     public EmployeePageResponse filteredEmployees(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument String userId,
             @Argument List<String> companyIds,
             @Argument List<String> locationIds,
@@ -154,6 +172,7 @@ public class EmployeeResolver {
             @Argument Integer size,
             @Argument String sortBy,
             @Argument String sortDirection) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
 
         log.debug("GraphQL Query: filteredEmployees - tenantId: {}, userId: {}", tenantId, userId);
 
@@ -205,7 +224,7 @@ public class EmployeeResolver {
      */
     @QueryMapping
     public Long filteredEmployeesCount(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument String userId,
             @Argument List<String> companyIds,
             @Argument List<String> locationIds,
@@ -219,6 +238,7 @@ public class EmployeeResolver {
             @Argument String searchQuery,
             @Argument String employeeStatus,
             @Argument String reportingManagerId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
 
         log.debug("GraphQL Query: filteredEmployeesCount - tenantId: {}, userId: {}", tenantId, userId);
 
@@ -274,7 +294,8 @@ public class EmployeeResolver {
     }
 
     @MutationMapping
-    public EmployeeResponse updateEmployee(@Argument String tenantId, @Argument String id, @Argument EmployeeRequest input) {
+    public EmployeeResponse updateEmployee(@Argument(name = "tenantId") String tenantIdArg, @Argument String id, @Argument EmployeeRequest input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: updateEmployee - id: {}, tenantId: {}", id, tenantId);
         EmployeeResponse result = employeeService.updateEmployee(tenantId, Long.parseLong(id), input);
         log.info("GraphQL Response: updateEmployee - updated employee id: {}, empId: {}",
@@ -283,7 +304,8 @@ public class EmployeeResolver {
     }
 
     @MutationMapping
-    public Boolean deleteEmployee(@Argument String tenantId, @Argument String id) {
+    public Boolean deleteEmployee(@Argument(name = "tenantId") String tenantIdArg, @Argument String id) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: deleteEmployee - id: {}, tenantId: {}", id, tenantId);
         employeeService.deleteEmployee(tenantId, Long.parseLong(id));
         log.info("GraphQL Response: deleteEmployee - successfully deleted employee id: {}", id);

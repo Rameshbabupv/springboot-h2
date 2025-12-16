@@ -9,6 +9,7 @@ import com.hrms.enums.AttendanceStatus;
 import com.hrms.graphql.input.AttendanceUpdateInput;
 import com.hrms.graphql.input.BulkAttendanceEntryInput;
 import com.hrms.repository.EmployeeRepository;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.DailyAttendanceService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -30,11 +31,14 @@ public class DailyAttendanceResolver {
 
     private final DailyAttendanceService attendanceService;
     private final EmployeeRepository employeeRepository;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     public DailyAttendanceResolver(DailyAttendanceService attendanceService,
-                                   EmployeeRepository employeeRepository) {
+                                   EmployeeRepository employeeRepository,
+                                   JwtClaimsExtractor jwtClaimsExtractor) {
         this.attendanceService = attendanceService;
         this.employeeRepository = employeeRepository;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     // Schema Mappings for nested objects
@@ -99,7 +103,7 @@ public class DailyAttendanceResolver {
     // Queries
 
     @QueryMapping
-    public List<DailyAttendance> dailyAttendance(@Argument String tenantId,
+    public List<DailyAttendance> dailyAttendance(@Argument(name = "tenantId") String tenantIdArg,
                                                   @Argument Long companyId,
                                                   @Argument String dateFrom,
                                                   @Argument String dateTo,
@@ -108,6 +112,7 @@ public class DailyAttendanceResolver {
                                                   @Argument Long locationId,
                                                   @Argument Long departmentId,
                                                   @Argument String searchQuery) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate from = parseDate(dateFrom);
         LocalDate to = parseDate(dateTo);
         // Use enhanced filter method if any additional filters are provided
@@ -119,10 +124,11 @@ public class DailyAttendanceResolver {
     }
 
     @QueryMapping
-    public List<DailyAttendance> employeeAttendance(@Argument String tenantId,
+    public List<DailyAttendance> employeeAttendance(@Argument(name = "tenantId") String tenantIdArg,
                                                      @Argument Long employeeId,
                                                      @Argument String dateFrom,
                                                      @Argument String dateTo) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate from = parseDate(dateFrom);
         LocalDate to = parseDate(dateTo);
         return attendanceService.getEmployeeAttendance(tenantId, employeeId, from, to);
@@ -131,15 +137,16 @@ public class DailyAttendanceResolver {
     // Mutations
 
     @MutationMapping
-    public Integer processAttendance(@Argument String tenantId,
+    public Integer processAttendance(@Argument(name = "tenantId") String tenantIdArg,
                                      @Argument Long companyId,
                                      @Argument String date) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate localDate = parseDate(date);
         return attendanceService.processAttendance(tenantId, companyId, localDate);
     }
 
     @MutationMapping
-    public DailyAttendance manualAttendanceEntry(@Argument String tenantId,
+    public DailyAttendance manualAttendanceEntry(@Argument(name = "tenantId") String tenantIdArg,
                                                   @Argument Long companyId,
                                                   @Argument Long employeeId,
                                                   @Argument String date,
@@ -147,6 +154,7 @@ public class DailyAttendanceResolver {
                                                   @Argument String punchOut,
                                                   @Argument AttendanceStatus status,
                                                   @Argument String remarks) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         LocalDate localDate = parseDate(date);
         OffsetDateTime punchInTime = parseTime(localDate, punchIn);
         OffsetDateTime punchOutTime = parseTime(localDate, punchOut);
@@ -155,24 +163,27 @@ public class DailyAttendanceResolver {
     }
 
     @MutationMapping
-    public BulkEntryResult bulkManualAttendanceEntry(@Argument String tenantId,
+    public BulkEntryResult bulkManualAttendanceEntry(@Argument(name = "tenantId") String tenantIdArg,
                                                       @Argument Long companyId,
                                                       @Argument List<BulkAttendanceEntryInput> entries) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return attendanceService.bulkManualAttendanceEntry(tenantId, companyId, entries);
     }
 
     @MutationMapping
-    public DailyAttendance updateAttendanceStatus(@Argument String tenantId,
+    public DailyAttendance updateAttendanceStatus(@Argument(name = "tenantId") String tenantIdArg,
                                                    @Argument Long attendanceId,
                                                    @Argument AttendanceStatus newStatus,
                                                    @Argument String reason) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return attendanceService.updateAttendanceStatus(tenantId, attendanceId, newStatus, reason);
     }
 
 
     @MutationMapping
-    public DailyAttendance updateAttendanceRecord(@Argument String tenantId,
+    public DailyAttendance updateAttendanceRecord(@Argument(name = "tenantId") String tenantIdArg,
                                                    @Argument AttendanceUpdateInput input) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return attendanceService.updateAttendanceRecord(
                 tenantId,
                 input.getAttendanceId(),
@@ -184,10 +195,11 @@ public class DailyAttendanceResolver {
 
     @MutationMapping
     public DailyAttendanceService.BulkStatusUpdateResult bulkUpdateAttendanceStatus(
-            @Argument String tenantId,
+            @Argument(name = "tenantId") String tenantIdArg,
             @Argument List<Long> attendanceIds,
             @Argument AttendanceStatus newStatus,
             @Argument String reason) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return attendanceService.bulkUpdateAttendanceStatus(tenantId, attendanceIds, newStatus, reason);
     }
 

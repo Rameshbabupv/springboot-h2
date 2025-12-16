@@ -3,6 +3,7 @@ package com.hrms.graphql.resolver;
 import com.hrms.dto.request.GradeRequest;
 import com.hrms.entity.Grade;
 import com.hrms.graphql.input.GradeInput;
+import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.GradeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.List;
 public class GradeResolver {
 
     private final GradeService gradeService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
     public List<Grade> grades() {
@@ -31,7 +33,8 @@ public class GradeResolver {
     }
 
     @QueryMapping
-    public List<Grade> gradesByTenant(@Argument String tenantId) {
+    public List<Grade> gradesByTenant(@Argument(name = "tenantId") String tenantIdArg) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return gradeService.getGradesByTenant(tenantId);
     }
 
@@ -41,19 +44,26 @@ public class GradeResolver {
     }
 
     @QueryMapping
-    public List<Grade> searchGrades(@Argument String tenantId, @Argument String searchTerm) {
+    public List<Grade> searchGrades(@Argument(name = "tenantId") String tenantIdArg, @Argument String searchTerm) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         return gradeService.searchGrades(tenantId, searchTerm);
     }
 
     @MutationMapping
     public Grade createGrade(@Argument GradeInput input) {
-        GradeRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        GradeRequest request = mapToRequest(input, tenantId);
         return gradeService.createGrade(request);
     }
 
     @MutationMapping
     public Grade updateGrade(@Argument Long id, @Argument GradeInput input) {
-        GradeRequest request = mapToRequest(input);
+        String tenantId = input.getTenantId() != null
+            ? input.getTenantId()
+            : jwtClaimsExtractor.getTenantIdOrFallback(null);
+        GradeRequest request = mapToRequest(input, tenantId);
         return gradeService.updateGrade(id, request);
     }
 
@@ -63,15 +73,18 @@ public class GradeResolver {
         return true;
     }
 
-    private GradeRequest mapToRequest(GradeInput input) {
+    private GradeRequest mapToRequest(GradeInput input, String tenantId) {
+        Long userId = jwtClaimsExtractor.getUserIdOrNull();
+        String userIdStr = userId != null ? userId.toString() : null;
+
         return GradeRequest.builder()
-                .tenantId(input.getTenantId())
+                .tenantId(tenantId)
                 .name(input.getName())
                 .code(input.getCode())
                 .description(input.getDescription())
                 .isActive(input.getIsActive())
-                .createdBy(input.getCreatedBy())
-                .updatedBy(input.getUpdatedBy())
+                .createdBy(input.getCreatedBy() != null ? input.getCreatedBy() : userIdStr)
+                .updatedBy(input.getUpdatedBy() != null ? input.getUpdatedBy() : userIdStr)
                 .build();
     }
 }
