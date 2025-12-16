@@ -28,9 +28,10 @@ import java.time.OffsetDateTime;
                           columnNames = {"tenant_id", "company_id", "code"})
     },
     indexes = {
-        @Index(name = "idx_leave_type_tenant", columnList = "tenant_id"),
         @Index(name = "idx_leave_type_tenant_company", columnList = "tenant_id, company_id"),
-        @Index(name = "idx_leave_type_active", columnList = "tenant_id, company_id, is_active")
+        @Index(name = "idx_leave_type_tenant_company_active", columnList = "tenant_id, company_id, is_active"),
+        @Index(name = "idx_leave_type_tenant_company_category", columnList = "tenant_id, company_id, category"),
+        @Index(name = "idx_leave_type_tenant_company_order", columnList = "tenant_id, company_id, display_order")
     }
 )
 @Data
@@ -73,8 +74,11 @@ public class LeaveType {
     @Column(name = "icon", length = 10)
     private String icon;  // Emoji icon
 
-    @Column(name = "color", length = 20)
-    private String color;  // Hex color code
+    @Column(name = "color_code", length = 7)
+    private String colorCode;  // Hex color code (e.g., #3B82F6)
+
+    @Column(name = "display_order")
+    private Integer displayOrder;  // Sorting order for UI display
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
@@ -86,4 +90,10 @@ public class LeaveType {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Column(name = "created_by", length = 50)
+    private String createdBy;  // User ID who created this record
+
+    @Column(name = "updated_by", length = 50)
+    private String updatedBy;  // User ID who last updated this record
 }

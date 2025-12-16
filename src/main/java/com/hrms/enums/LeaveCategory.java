@@ -8,5 +8,6 @@ public enum LeaveCategory {
     EARNED,        // Accrued based on working days
     DEFINED,       // Fixed annual quota
     UNLIMITED,     // No limit (LOP, etc.)
-    COMPENSATORY   // Comp-off, custom crediting
+    COMPENSATORY,  // Comp-off, custom crediting
+    PERMISSION     // Short duration permissions
 }

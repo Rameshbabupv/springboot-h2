@@ -1,5 +1,6 @@
 package com.hrms.graphql.resolver;
 
+import com.hrms.dto.response.DeleteLeaveTypeResponse;
 import com.hrms.entity.LeaveType;
 import com.hrms.graphql.input.LeaveTypeInput;
 import com.hrms.service.LeaveTypeService;
@@ -8,12 +9,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
 /**
  * GraphQL Resolver for LeaveType operations.
+ * Implements queries and mutations for leave type master data management.
  */
 @Slf4j
 @Controller
@@ -22,75 +25,84 @@ public class LeaveTypeResolver {
 
     private final LeaveTypeService leaveTypeService;
 
+    // ========== Queries ==========
+
+    /**
+     * Get all leave types for a company with optional isActive filter.
+     * GraphQL Query: leaveTypes(tenantId: String!, companyId: ID!, isActive: Boolean): [LeaveType!]!
+     */
     @QueryMapping
     public List<LeaveType> leaveTypes(@Argument String tenantId,
                                        @Argument Long companyId,
-                                       @Argument Boolean activeOnly) {
-        log.debug("GraphQL Query: leaveTypes - tenantId: {}, companyId: {}, activeOnly: {}",
-                  tenantId, companyId, activeOnly);
-        return leaveTypeService.getLeaveTypes(tenantId, companyId, activeOnly);
+                                       @Argument Boolean isActive) {
+        log.debug("GraphQL Query: leaveTypes - tenantId: {}, companyId: {}, isActive: {}",
+                  tenantId, companyId, isActive);
+        return leaveTypeService.getLeaveTypes(tenantId, companyId, isActive);
     }
 
+    /**
+     * Get single leave type by ID.
+     * GraphQL Query: leaveType(tenantId: String!, companyId: ID!, id: ID!): LeaveType
+     */
     @QueryMapping
-    public LeaveType leaveType(@Argument Long id) {
-        log.debug("GraphQL Query: leaveType - id: {}", id);
-        return leaveTypeService.getLeaveTypeById(id).orElse(null);
+    public LeaveType leaveType(@Argument String tenantId,
+                                @Argument Long companyId,
+                                @Argument Long id) {
+        log.debug("GraphQL Query: leaveType - tenantId: {}, companyId: {}, id: {}",
+                  tenantId, companyId, id);
+        return leaveTypeService.getLeaveTypeById(tenantId, companyId, id).orElse(null);
     }
 
-    @QueryMapping
-    public LeaveType leaveTypeByCode(@Argument String tenantId,
-                                      @Argument Long companyId,
-                                      @Argument String code) {
-        log.debug("GraphQL Query: leaveTypeByCode - tenantId: {}, companyId: {}, code: {}",
-                  tenantId, companyId, code);
-        return leaveTypeService.getLeaveTypeByCode(tenantId, companyId, code).orElse(null);
-    }
+    // ========== Mutations ==========
 
-    @QueryMapping
-    public List<LeaveType> sharedLeaveTypes(@Argument String tenantId) {
-        log.debug("GraphQL Query: sharedLeaveTypes - tenantId: {}", tenantId);
-        return leaveTypeService.getSharedLeaveTypes(tenantId);
-    }
-
+    /**
+     * Create new leave type.
+     * GraphQL Mutation: createLeaveType(tenantId: String!, companyId: ID!, input: LeaveTypeInput!): LeaveType!
+     */
     @MutationMapping
     public LeaveType createLeaveType(@Argument String tenantId,
                                       @Argument Long companyId,
                                       @Argument LeaveTypeInput input) {
         log.debug("GraphQL Mutation: createLeaveType - tenantId: {}, companyId: {}, code: {}",
                   tenantId, companyId, input.getCode());
-        LeaveType leaveType = mapInputToEntity(input);
-        return leaveTypeService.createLeaveType(tenantId, companyId, leaveType);
+        return leaveTypeService.createLeaveType(tenantId, companyId, input);
     }
 
+    /**
+     * Update existing leave type.
+     * GraphQL Mutation: updateLeaveType(tenantId: String!, companyId: ID!, id: ID!, input: LeaveTypeInput!): LeaveType!
+     */
     @MutationMapping
-    public LeaveType updateLeaveType(@Argument Long id, @Argument LeaveTypeInput input) {
-        log.debug("GraphQL Mutation: updateLeaveType - id: {}", id);
-        LeaveType leaveType = mapInputToEntity(input);
-        return leaveTypeService.updateLeaveType(id, leaveType);
+    public LeaveType updateLeaveType(@Argument String tenantId,
+                                      @Argument Long companyId,
+                                      @Argument Long id,
+                                      @Argument LeaveTypeInput input) {
+        log.debug("GraphQL Mutation: updateLeaveType - tenantId: {}, companyId: {}, id: {}",
+                  tenantId, companyId, id);
+        return leaveTypeService.updateLeaveType(tenantId, companyId, id, input);
     }
 
+    /**
+     * Delete leave type (soft or hard delete based on references).
+     * GraphQL Mutation: deleteLeaveType(tenantId: String!, companyId: ID!, id: ID!): DeleteLeaveTypeResponse!
+     */
     @MutationMapping
-    public Boolean deleteLeaveType(@Argument Long id) {
-        log.debug("GraphQL Mutation: deleteLeaveType - id: {}", id);
-        leaveTypeService.deleteLeaveType(id);
-        return true;
+    public DeleteLeaveTypeResponse deleteLeaveType(@Argument String tenantId,
+                                                     @Argument Long companyId,
+                                                     @Argument Long id) {
+        log.debug("GraphQL Mutation: deleteLeaveType - tenantId: {}, companyId: {}, id: {}",
+                  tenantId, companyId, id);
+        return leaveTypeService.deleteLeaveType(tenantId, companyId, id);
     }
 
-    @MutationMapping
-    public LeaveType toggleLeaveTypeStatus(@Argument Long id) {
-        log.debug("GraphQL Mutation: toggleLeaveTypeStatus - id: {}", id);
-        return leaveTypeService.toggleStatus(id);
-    }
+    // ========== Field Resolvers ==========
 
-    private LeaveType mapInputToEntity(LeaveTypeInput input) {
-        LeaveType entity = new LeaveType();
-        entity.setCode(input.getCode());
-        entity.setName(input.getName());
-        entity.setCategory(input.getCategory());
-        entity.setDescription(input.getDescription());
-        entity.setIcon(input.getIcon());
-        entity.setColor(input.getColor());
-        entity.setIsActive(input.getIsActive() != null ? input.getIsActive() : true);
-        return entity;
+    /**
+     * Resolve companyId field from company entity.
+     * Converts ManyToOne relationship to scalar ID for GraphQL response.
+     */
+    @SchemaMapping(typeName = "LeaveType", field = "companyId")
+    public Long companyId(LeaveType leaveType) {
+        return leaveType.getCompany() != null ? leaveType.getCompany().getId() : null;
     }
 }
