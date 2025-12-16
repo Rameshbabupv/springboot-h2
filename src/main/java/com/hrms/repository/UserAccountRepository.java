@@ -64,4 +64,26 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     // Count active users by tenant
     long countByTenantIdAndIsActiveTrueAndDeletedAtIsNull(String tenantId);
+
+    // =====================================================
+    // KEYCLOAK AUTHENTICATION METHODS
+    // =====================================================
+
+    // Find by username (global search for login)
+    Optional<UserAccount> findByUsername(String username);
+
+    // Find by email (global search for signup validation)
+    Optional<UserAccount> findByEmail(String email);
+
+    // Check if email exists (global check)
+    boolean existsByEmail(String email);
+
+    // Check if username exists (global check)
+    boolean existsByUsername(String username);
+
+    // Find by Keycloak user ID
+    Optional<UserAccount> findByKeycloakUserId(String keycloakUserId);
+
+    // Find by Keycloak user ID (case-insensitive)
+    Optional<UserAccount> findByKeycloakUserIdIgnoreCase(String keycloakUserId);
 }

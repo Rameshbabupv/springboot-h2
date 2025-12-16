@@ -51,9 +51,14 @@ public class UserAccount {
     @Column(name = "tenant_id", nullable = false, length = 50)
     private String tenantId;
 
-    @NotNull(message = "Employee ID is required")
-    @Column(name = "employee_id", nullable = false, unique = true)
+    @Column(name = "employee_id", unique = true)
     private Long employeeId;
+
+    @Column(name = "keycloak_user_id", unique = true, length = 255)
+    private String keycloakUserId;
+
+    @Column(name = "company_id")
+    private Long companyId;
 
     @NotBlank(message = "Username is required")
     @Column(name = "username", nullable = false, length = 100)

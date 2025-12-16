@@ -129,6 +129,39 @@
             <version>0.12.3</version>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Spring Security OAuth2 Resource Server for Keycloak JWT validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- Nano ID Generator for globally unique tenant IDs -->
+        <dependency>
+            <groupId>com.aventrix.jnanoid</groupId>
+            <artifactId>jnanoid</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <!-- Keycloak Admin REST Client for user management -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-admin-client</artifactId>
+            <version>23.0.0</version>
+        </dependency>
+
+        <!-- JAX-RS API for Keycloak Admin Client Response handling -->
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
+        <!-- JSON processing for Keycloak responses -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
