@@ -22,16 +22,16 @@ public class JobFunctionRequest {
     private String tenantId;
 
     @NotBlank(message = "Job function name is required")
-    @Size(min = 2, max = 100, message = "Job function name must be between 2 and 100 characters")
+    @Size(min = 2, max = 50, message = "Job function name must be between 2 and 50 characters")
     @Pattern(regexp = "^[a-zA-Z0-9\\s&\\-/]+$", message = "Job function name can only contain letters, numbers, spaces, &, -, and /")
     private String name;
 
     @NotBlank(message = "Job function code is required")
-    @Size(min = 2, max = 20, message = "Job function code must be between 2 and 20 characters")
+    @Size(min = 2, max = 10, message = "Job function code must be between 2 and 10 characters")
     @Pattern(regexp = "^[A-Z0-9\\-_]+$", message = "Job function code can only contain uppercase letters, numbers, -, and _")
     private String code;
 
-    @Size(max = 500, message = "Description must not exceed 500 characters")
+    @Size(max = 200, message = "Description must not exceed 200 characters")
     private String description;
 
     @NotBlank(message = "Function group is required")
