@@ -1,0 +1,45 @@
+# Route Type Definition
+type Route {
+    id: ID!
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean!
+    createdBy: String
+    createdAt: String
+    updatedBy: String
+    updatedAt: String
+}
+
+# Route Input for create/update operations
+input RouteInput {
+    tenantId: String!
+    name: String!
+    code: String!
+    description: String
+    isActive: Boolean
+    createdBy: String
+    updatedBy: String
+}
+
+# Extend existing Query type
+extend type Query {
+    "Get all active routes for a specific tenant"
+    routesByTenant(tenantId: String!): [Route]
+
+    "Get a specific route by ID"
+    routeById(id: ID!, tenantId: String!): Route
+}
+
+# Extend existing Mutation type
+extend type Mutation {
+    "Create a new route"
+    createRoute(input: RouteInput!): Route
+
+    "Update an existing route"
+    updateRoute(id: ID!, input: RouteInput!): Route
+
+    "Delete a route (soft delete)"
+    deleteRoute(id: ID!, tenantId: String!): Boolean
+}
