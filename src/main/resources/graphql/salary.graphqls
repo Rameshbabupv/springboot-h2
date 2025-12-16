@@ -1,0 +1,329 @@
+# ==========================================
+# Employee Salary Structure - GraphQL Schema
+# ==========================================
+# Author: Claude Sonnet 4.5
+# Date: December 16, 2025
+# Purpose: Salary component management, templates, and calculations
+# ==========================================
+
+# ==========================================
+# ENUMS
+# ==========================================
+
+enum PayheadType {
+    EARNING
+    DEDUCTION
+    STATUTORY
+}
+
+enum CalculationType {
+    FIXED
+    PERCENTAGE
+    FORMULA
+}
+
+# ==========================================
+# TYPES
+# ==========================================
+
+type PayheadMaster {
+    id: ID!
+    tenantId: String!
+    companyId: ID
+
+    payheadName: String!
+    payheadCode: String!
+    payheadType: PayheadType!
+    payheadCategory: String
+
+    calculationType: CalculationType!
+    calculationBase: String
+    defaultValue: Float
+    formula: String
+
+    isTaxable: Boolean!
+    affectsPf: Boolean!
+    affectsEsi: Boolean!
+    affectsGratuity: Boolean!
+    affectsLwf: Boolean!
+
+    displayOrder: Int!
+    showInPayslip: Boolean!
+    isMandatory: Boolean!
+    isActive: Boolean!
+
+    createdAt: String!
+    updatedAt: String!
+}
+
+type EmployeeSalaryStructure {
+    id: ID!
+    tenantId: String!
+    companyId: ID!
+
+    employee: Employee!
+    payhead: PayheadMaster!
+
+    valueType: String!
+    fixedAmount: Float
+    percentage: Float
+    calculatedAmount: Float!
+
+    effectiveFrom: String!
+    effectiveTo: String
+    isActive: Boolean!
+
+    createdAt: String!
+    updatedAt: String!
+}
+
+type SalaryTemplate {
+    id: ID!
+    tenantId: String!
+    companyId: ID!
+
+    templateName: String!
+    templateCode: String!
+    description: String
+
+    gradeIds: [ID!]
+    designationIds: [ID!]
+
+    salaryComponents: [SalaryComponentConfig!]!
+
+    isActive: Boolean!
+    createdAt: String!
+    updatedAt: String!
+}
+
+type SalaryComponentConfig {
+    payheadId: ID!
+    payheadCode: String!
+    payheadName: String!
+    payheadType: PayheadType!
+    valueType: String!
+    amount: Float
+    percentage: Float
+    calculationBase: String
+}
+
+type SalarySummary {
+    totalEarnings: Float!
+    totalDeductions: Float!
+    totalStatutory: Float!
+    grossSalary: Float!
+    netSalary: Float!
+    ctc: Float!
+    components: [EmployeeSalaryStructure!]!
+}
+
+# ==========================================
+# BATCH CALCULATION TYPES (Performance Optimization)
+# ==========================================
+
+type CalculatedComponent {
+    payheadId: ID!
+    payheadName: String!
+    payheadCode: String!
+    payheadType: PayheadType!
+    valueType: String!
+    inputValue: Float!
+    calculatedAmount: Float!
+    calculationBase: String
+}
+
+type SalarySummaryCalculated {
+    # Calculated totals
+    totalEarnings: Float!
+    totalDeductions: Float!
+    totalStatutory: Float!
+    grossSalary: Float!
+    netSalary: Float!
+    ctc: Float!
+
+    # Component breakdown with calculated amounts
+    componentBreakdown: [CalculatedComponent!]!
+
+    # Validation results
+    warnings: [String!]!
+    errors: [String!]!
+    isValid: Boolean!
+    totalComponents: Int!
+}
+
+# ==========================================
+# INPUT TYPES
+# ==========================================
+
+input PayheadInput {
+    payheadName: String!
+    payheadCode: String!
+    payheadType: PayheadType!
+    payheadCategory: String
+
+    calculationType: CalculationType!
+    calculationBase: String
+    defaultValue: Float
+    formula: String
+
+    isTaxable: Boolean
+    affectsPf: Boolean
+    affectsEsi: Boolean
+    affectsGratuity: Boolean
+    affectsLwf: Boolean
+
+    displayOrder: Int
+    showInPayslip: Boolean
+    isMandatory: Boolean
+    isActive: Boolean
+}
+
+input SalaryComponentInput {
+    payheadId: ID!
+    valueType: String!
+    fixedAmount: Float
+    percentage: Float
+}
+
+input SalaryTemplateInput {
+    templateName: String!
+    templateCode: String!
+    description: String
+    gradeIds: [ID!]
+    designationIds: [ID!]
+    salaryComponents: [SalaryComponentInput!]!
+    isActive: Boolean
+}
+
+# ==========================================
+# QUERIES
+# ==========================================
+
+extend type Query {
+    # Payhead Master Queries
+    """
+    Fetches payheads for the specified tenant and optional company.
+
+    **SYSTEM Fallback**: If no tenant-specific payheads exist,
+    automatically returns SYSTEM payheads (master data shared across all tenants).
+
+    This fallback behavior eliminates the need for frontend to make two queries.
+
+    Parameters:
+    - tenantId: The tenant identifier (e.g., 'TENANT001')
+    - companyId: Optional company filter (null = shared payheads)
+    - type: Optional payhead type filter (EARNING, DEDUCTION, STATUTORY)
+    - isActive: Optional active status filter
+
+    Returns: List of PayheadMaster objects
+    """
+    payheadMaster(
+        tenantId: String!
+        companyId: ID
+        type: PayheadType
+        isActive: Boolean
+    ): [PayheadMaster!]!
+
+    payheadById(
+        tenantId: String!
+        id: ID!
+    ): PayheadMaster
+
+    # Employee Salary Structure Queries
+    employeeSalaryStructure(
+        tenantId: String!
+        companyId: ID!
+        employeeId: ID!
+        effectiveDate: String
+    ): [EmployeeSalaryStructure!]!
+
+    # Salary Summary (Calculated from existing structure)
+    employeeSalarySummary(
+        tenantId: String!
+        companyId: ID!
+        employeeId: ID!
+        effectiveDate: String
+    ): SalarySummary!
+
+    # Batch Salary Calculation (without persistence - for real-time validation)
+    calculateSalarySummary(
+        tenantId: String!
+        companyId: ID!
+        salaryComponents: [SalaryComponentInput!]!
+        effectiveDate: String
+    ): SalarySummaryCalculated!
+
+    # Salary Template Queries
+    salaryTemplates(
+        tenantId: String!
+        companyId: ID!
+        gradeId: ID
+        designationId: ID
+        isActive: Boolean
+    ): [SalaryTemplate!]!
+
+    salaryTemplateById(
+        tenantId: String!
+        id: ID!
+    ): SalaryTemplate
+}
+
+# ==========================================
+# MUTATIONS
+# ==========================================
+
+extend type Mutation {
+    # Payhead Master Mutations
+    createPayhead(
+        tenantId: String!
+        companyId: ID
+        input: PayheadInput!
+    ): PayheadMaster!
+
+    updatePayhead(
+        tenantId: String!
+        id: ID!
+        input: PayheadInput!
+    ): PayheadMaster!
+
+    deletePayhead(
+        tenantId: String!
+        id: ID!
+    ): Boolean!
+
+    # Employee Salary Structure Mutations
+    saveEmployeeSalaryStructure(
+        tenantId: String!
+        companyId: ID!
+        employeeId: ID!
+        salaryComponents: [SalaryComponentInput!]!
+        effectiveFrom: String!
+    ): [EmployeeSalaryStructure!]!
+
+    reviseEmployeeSalary(
+        tenantId: String!
+        companyId: ID!
+        employeeId: ID!
+        salaryComponents: [SalaryComponentInput!]!
+        effectiveFrom: String!
+        remarks: String
+    ): [EmployeeSalaryStructure!]!
+
+    # Salary Template Mutations
+    createSalaryTemplate(
+        tenantId: String!
+        companyId: ID!
+        input: SalaryTemplateInput!
+    ): SalaryTemplate!
+
+    updateSalaryTemplate(
+        tenantId: String!
+        id: ID!
+        input: SalaryTemplateInput!
+    ): SalaryTemplate!
+
+    deleteSalaryTemplate(
+        tenantId: String!
+        id: ID!
+    ): Boolean!
+}
