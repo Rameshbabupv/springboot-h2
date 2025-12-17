@@ -2,6 +2,7 @@ package com.hrms.service.impl;
 
 import com.hrms.dto.request.*;
 import com.hrms.entity.*;
+import com.hrms.exception.BadRequestException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.*;
 import com.hrms.service.CompanyService;
@@ -27,6 +28,16 @@ public class CompanyServiceImpl implements CompanyService {
     private final CompanyGeneralSettingsRepository generalSettingsRepository;
     private final CompanyLocationRepository locationRepository;
     private final CompanyBankAccountRepository bankAccountRepository;
+
+    // Dependency validation repositories (for deleteCompany constraint checks)
+    // Only repositories for entities with company relationship (NOT tenant-wide masters)
+    private final EmployeeRepository employeeRepository;
+    private final EmployeeSalaryStructureRepository employeeSalaryStructureRepository;
+    private final AttendanceRegularizationRepository attendanceRegularizationRepository;
+    private final ShiftRepository shiftRepository;
+    private final LeaveTypeRepository leaveTypeRepository;
+    private final LeavePolicyRepository leavePolicyRepository;
+    private final AttendancePolicyTemplateRepository attendancePolicyTemplateRepository;
 
     // ==================== Company CRUD ====================
 
@@ -113,9 +124,88 @@ public class CompanyServiceImpl implements CompanyService {
         if (!companyRepository.existsById(id)) {
             throw new ResourceNotFoundException("Company", "id", id);
         }
+
+        // Validate critical dependencies before allowing deletion
+        validateCompanyDeletion(id);
+
         companyRepository.deleteById(id);
 
         log.info("Deleted company with id: {}", id);
+    }
+
+    /**
+     * Validates that a company can be safely deleted.
+     * Throws BadRequestException if critical dependent records exist.
+     *
+     * Hybrid Approach (ADR-003):
+     * - Prevent deletion: Company-scoped entities with foreign key relationship
+     * - Allow deletion of: Tenant-wide masters (Department, Designation, etc. - no company_id)
+     * - Cascade delete: Operational logs (handled by entity cascade config)
+     */
+    private void validateCompanyDeletion(Long companyId) {
+        log.debug("Validating company deletion constraints for company id: {}", companyId);
+
+        // CRITICAL: Prevent deletion if company has active employees
+        long employeeCount = employeeRepository.countByCompanyId(companyId);
+        if (employeeCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + employeeCount + " employee(s) assigned to this company. " +
+                "Please reassign or delete employees first."
+            );
+        }
+
+        // CRITICAL: Prevent deletion if company has salary structures
+        long salaryStructureCount = employeeSalaryStructureRepository.countByCompanyId(companyId);
+        if (salaryStructureCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + salaryStructureCount + " salary structure(s) configured. " +
+                "Please remove salary structures first."
+            );
+        }
+
+        // CRITICAL: Prevent deletion if company has pending attendance records
+        long attendanceRegularizationCount = attendanceRegularizationRepository.countByCompanyId(companyId);
+        if (attendanceRegularizationCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + attendanceRegularizationCount + " pending attendance regularization(s). " +
+                "Please resolve or remove regularizations first."
+            );
+        }
+
+        // ATTENDANCE: Prevent deletion if company has shift/leave configurations
+        long shiftCount = shiftRepository.countByCompanyId(companyId);
+        if (shiftCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + shiftCount + " shift(s) configured. " +
+                "Please delete shifts first."
+            );
+        }
+
+        long leaveTypeCount = leaveTypeRepository.countByCompanyId(companyId);
+        if (leaveTypeCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + leaveTypeCount + " leave type(s) configured. " +
+                "Please delete leave types first."
+            );
+        }
+
+        long leavePolicyCount = leavePolicyRepository.countByCompanyId(companyId);
+        if (leavePolicyCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + leavePolicyCount + " leave policy(ies) configured. " +
+                "Please delete leave policies first."
+            );
+        }
+
+        long attendancePolicyCount = attendancePolicyTemplateRepository.countByCompanyId(companyId);
+        if (attendancePolicyCount > 0) {
+            throw new BadRequestException(
+                "Cannot delete company: " + attendancePolicyCount + " attendance policy template(s) configured. " +
+                "Please delete attendance policies first."
+            );
+        }
+
+        log.debug("Company deletion validation passed for company id: {}", companyId);
     }
 
     @Override

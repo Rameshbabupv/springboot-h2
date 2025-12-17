@@ -27,6 +27,12 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
                                         @Param("companyId") Long companyId);
 
     /**
+     * Company deletion validation - count company-specific shifts only
+     */
+    @Query("SELECT COUNT(s) FROM Shift s WHERE s.company.id = :companyId AND s.company IS NOT NULL")
+    long countByCompanyId(@Param("companyId") Long companyId);
+
+    /**
      * Find active shifts for a company.
      */
     @Query("SELECT s FROM Shift s WHERE s.tenantId = :tenantId " +

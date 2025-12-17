@@ -32,6 +32,11 @@ public interface AttendanceRegularizationRepository extends JpaRepository<Attend
             @Param("endDate") LocalDate endDate);
 
     /**
+     * Company deletion validation
+     */
+    long countByCompanyId(Long companyId);
+
+    /**
      * Find pending regularizations for a company.
      */
     @Query("SELECT ar FROM AttendanceRegularization ar WHERE ar.tenantId = :tenantId " +

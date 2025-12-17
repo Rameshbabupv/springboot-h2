@@ -26,6 +26,12 @@ public interface LeavePolicyRepository extends JpaRepository<LeavePolicy, Long> 
                                               @Param("companyId") Long companyId);
 
     /**
+     * Company deletion validation - count company-specific leave policies only
+     */
+    @Query("SELECT COUNT(lp) FROM LeavePolicy lp WHERE lp.company.id = :companyId AND lp.company IS NOT NULL")
+    long countByCompanyId(@Param("companyId") Long companyId);
+
+    /**
      * Find active policies for a company.
      */
     @Query("SELECT lp FROM LeavePolicy lp WHERE lp.tenantId = :tenantId " +

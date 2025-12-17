@@ -23,6 +23,12 @@ public interface AttendancePolicyTemplateRepository extends JpaRepository<Attend
     List<AttendancePolicyTemplate> findByTenantIdOrderByPriorityDesc(String tenantId);
 
     /**
+     * Company deletion validation - count company-specific templates only
+     */
+    @Query("SELECT COUNT(apt) FROM AttendancePolicyTemplate apt WHERE apt.company.id = :companyId AND apt.company IS NOT NULL")
+    long countByCompanyId(@Param("companyId") Long companyId);
+
+    /**
      * Find active templates for a company (includes shared + company-specific).
      */
     @Query("SELECT apt FROM AttendancePolicyTemplate apt WHERE apt.tenantId = :tenantId " +

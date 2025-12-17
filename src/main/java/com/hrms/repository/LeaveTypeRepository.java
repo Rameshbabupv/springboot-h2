@@ -29,6 +29,12 @@ public interface LeaveTypeRepository extends JpaRepository<LeaveType, Long> {
                                             @Param("companyId") Long companyId);
 
     /**
+     * Company deletion validation - count company-specific leave types only
+     */
+    @Query("SELECT COUNT(lt) FROM LeaveType lt WHERE lt.company.id = :companyId AND lt.company IS NOT NULL")
+    long countByCompanyId(@Param("companyId") Long companyId);
+
+    /**
      * Find active leave types for a company.
      * Orders by display_order, then by code.
      */

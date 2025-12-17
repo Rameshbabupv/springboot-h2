@@ -33,6 +33,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     List<Employee> findByTenantIdAndCompany_Id(String tenantId, Long companyId);
 
+    long countByCompanyId(Long companyId);
+
     List<Employee> findByTenantIdAndDepartment_Id(String tenantId, Long departmentId);
 
     List<Employee> findByTenantIdAndDesignation_Id(String tenantId, Long designationId);

@@ -25,6 +25,11 @@ import java.util.List;
 public interface EmployeeSalaryStructureRepository extends JpaRepository<EmployeeSalaryStructure, Long>, JpaSpecificationExecutor<EmployeeSalaryStructure> {
 
     /**
+     * Company deletion validation
+     */
+    long countByCompanyId(Long companyId);
+
+    /**
      * Find active salary structure for employee (effective_to = NULL)
      * Uses JOIN FETCH to avoid N+1 queries
      */
