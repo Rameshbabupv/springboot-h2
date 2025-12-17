@@ -46,6 +46,8 @@ public interface EmployeeMapper {
     @Mapping(target = "dateOfRetirement", source = "dateOfRetirement", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "effectFromSalary", source = "effectFromSalary", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "pfEnrollmentDate", source = "pfEnrollmentDate", qualifiedByName = "stringToLocalDate")
+    @Mapping(target = "sourceOfHire", source = "sourceOfHire")
+    @Mapping(target = "noticePeriod", source = "noticePeriod")
     Employee toEntity(EmployeeRequest request);
 
     @Mapping(target = "id", ignore = true)
@@ -69,6 +71,8 @@ public interface EmployeeMapper {
     @Mapping(target = "dateOfRetirement", source = "dateOfRetirement", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "effectFromSalary", source = "effectFromSalary", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "pfEnrollmentDate", source = "pfEnrollmentDate", qualifiedByName = "stringToLocalDate")
+    @Mapping(target = "sourceOfHire", source = "sourceOfHire")
+    @Mapping(target = "noticePeriod", source = "noticePeriod")
     void updateEntityFromRequest(EmployeeRequest request, @MappingTarget Employee employee);
 
     // =====================================================
