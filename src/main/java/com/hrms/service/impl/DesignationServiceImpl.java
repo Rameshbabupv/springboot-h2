@@ -1,18 +1,22 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.DesignationRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.Designation;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.DesignationRepository;
 import com.hrms.service.DesignationService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Designation operations.
@@ -24,6 +28,7 @@ import java.util.Optional;
 public class DesignationServiceImpl implements DesignationService {
 
     private final DesignationRepository designationRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<Designation> getAllDesignations() {
@@ -143,6 +148,45 @@ public class DesignationServiceImpl implements DesignationService {
     @Override
     public boolean existsById(Long id) {
         return designationRepository.existsById(id);
+    }
+
+    @Override
+    public List<Designation> getDesignationsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentDesignationId) {
+        log.debug("Fetching designations for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        // Get user's organizational scope
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getDesignationIds() != null && !userScope.getDesignationIds().isEmpty()) {
+            allowedIds = userScope.getDesignationIds();
+        }
+
+        // Fetch scoped designations
+        List<Designation> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Super admin - get all active designations
+            scopedList = designationRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            // Scoped user - get only allowed designations
+            scopedList = designationRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        // In edit mode, include current value even if outside scope
+        if (isEditMode && currentDesignationId != null) {
+            boolean found = scopedList.stream().anyMatch(d -> d.getId().equals(currentDesignationId));
+            if (!found) {
+                designationRepository.findById(currentDesignationId).ifPresent(scopedList::add);
+            }
+        }
+
+        // Sort by name
+        List<Designation> result = scopedList.stream()
+                .sorted(Comparator.comparing(Designation::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} designations for selection", result.size());
+        return result;
     }
 
     private Designation mapToEntity(DesignationRequest request) {

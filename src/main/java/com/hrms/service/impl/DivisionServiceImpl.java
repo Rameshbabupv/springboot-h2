@@ -1,18 +1,22 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.DivisionRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.Division;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.DivisionRepository;
 import com.hrms.service.DivisionService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Division operations with comprehensive validation.
@@ -24,6 +28,7 @@ import java.util.Optional;
 public class DivisionServiceImpl implements DivisionService {
 
     private final DivisionRepository divisionRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<Division> getAllDivisions() {
@@ -143,6 +148,45 @@ public class DivisionServiceImpl implements DivisionService {
     @Override
     public boolean existsById(Long id) {
         return divisionRepository.existsById(id);
+    }
+
+    @Override
+    public List<Division> getDivisionsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentDivisionId) {
+        log.debug("Fetching divisions for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        // Get user's organizational scope
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getDivisionIds() != null && !userScope.getDivisionIds().isEmpty()) {
+            allowedIds = userScope.getDivisionIds();
+        }
+
+        // Fetch scoped divisions
+        List<Division> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Super admin - get all active divisions
+            scopedList = divisionRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            // Scoped user - get only allowed divisions
+            scopedList = divisionRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        // In edit mode, include current value even if outside scope
+        if (isEditMode && currentDivisionId != null) {
+            boolean found = scopedList.stream().anyMatch(d -> d.getId().equals(currentDivisionId));
+            if (!found) {
+                divisionRepository.findById(currentDivisionId).ifPresent(scopedList::add);
+            }
+        }
+
+        // Sort by name
+        List<Division> result = scopedList.stream()
+                .sorted(Comparator.comparing(Division::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} divisions for selection", result.size());
+        return result;
     }
 
     private Division mapToEntity(DivisionRequest request) {

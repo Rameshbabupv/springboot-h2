@@ -22,6 +22,15 @@ enum CalculationType {
     FORMULA
 }
 
+enum RoundingRule {
+    NONE
+    ROUND
+    FLOOR
+    CEIL
+    ROUND_10
+    ROUND_100
+}
+
 # ==========================================
 # TYPES
 # ==========================================
@@ -46,6 +55,13 @@ type PayheadMaster {
     affectsEsi: Boolean!
     affectsGratuity: Boolean!
     affectsLwf: Boolean!
+    affectsPt: Boolean!
+
+    roundingRule: RoundingRule
+    minValue: Float
+    maxValue: Float
+    applicableCondition: String
+    description: String
 
     displayOrder: Int!
     showInPayslip: Boolean!
@@ -160,6 +176,7 @@ input PayheadInput {
     payheadCode: String!
     payheadType: PayheadType!
     payheadCategory: String
+    description: String
 
     calculationType: CalculationType!
     calculationBase: String
@@ -171,6 +188,12 @@ input PayheadInput {
     affectsEsi: Boolean
     affectsGratuity: Boolean
     affectsLwf: Boolean
+    affectsPt: Boolean
+
+    roundingRule: RoundingRule
+    minValue: Float
+    maxValue: Float
+    applicableCondition: String
 
     displayOrder: Int
     showInPayslip: Boolean

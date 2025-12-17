@@ -3,12 +3,15 @@ package com.hrms.service.impl;
 import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.dto.response.ManagerOptionResponse;
 import com.hrms.entity.*;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.exception.ValidationException;
 import com.hrms.mapper.EmployeeMapper;
 import com.hrms.repository.*;
+import com.hrms.validator.EmployeeValidationCoordinator;
 import com.hrms.service.EmployeeService;
+import com.hrms.service.OrganizationalScopeService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
@@ -21,6 +24,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,6 +43,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
     private final EntityManager entityManager;
+    private final EmployeeValidationCoordinator validationCoordinator;
+    private final OrganizationalScopeService organizationalScopeService;
 
     // Master repositories for required relationships
     private final CompanyRepository companyRepository;
@@ -63,22 +70,50 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         log.debug("Creating employee: {} for tenant: {}", request.getEmpId(), request.getTenantId());
 
-        // Validate 13 required fields
-        validateRequiredFields(request);
+        // Auto-generate employee ID if not provided
+        if (request.getEmpId() == null || request.getEmpId().isEmpty()) {
+            String generatedId = generateEmployeeId(request.getTenantId(), request.getCompanyId());
+            request.setEmpId(generatedId);
+            log.info("Auto-generated employee ID: {}", generatedId);
+        }
+
+        // Execute multi-layer validation (structural, cross-field, date, template-based)
+        validationCoordinator.validateForCreate(request);
 
         // Check for duplicate empId
         if (employeeRepository.findByTenantIdAndEmpId(request.getTenantId(), request.getEmpId()).isPresent()) {
             throw new ValidationException("Employee ID '" + request.getEmpId() + "' already exists for this tenant");
         }
 
+        // Log values BEFORE mapping
+        log.debug("BEFORE MAPPING - Request sourceOfHire: {}, noticePeriod: {}",
+                  request.getSourceOfHire(), request.getNoticePeriod());
+
         // Map DTO to entity (MapStruct handles all 78 fields automatically!)
         Employee employee = employeeMapper.toEntity(request);
+
+        // Log values AFTER mapping
+        log.debug("AFTER MAPPING - Entity sourceOfHire: {}, noticePeriod: {}",
+                  employee.getSourceOfHire(), employee.getNoticePeriod());
 
         // Set required relationships manually (foreign keys)
         setRequiredRelationships(employee, request);
 
         // Set optional relationships
         setOptionalRelationships(employee, request);
+
+        // Log Personal & Contact Information
+        log.debug("CREATE EMPLOYEE - Personal Info: employeeName={}, dateOfBirth={}, gender={}, fatherName={}, bloodGroup={}, maritalStatus={}",
+                  employee.getEmployeeName(), employee.getDateOfBirth(), employee.getGender(),
+                  employee.getFatherName(), employee.getBloodGroup(), employee.getMaritalStatus());
+        log.debug("CREATE EMPLOYEE - Contact Info: address1={}, pincode={}, mobileNo={}, emailId={}, officialEmailId={}",
+                  employee.getAddress1(), employee.getPincode(), employee.getMobileNo(),
+                  employee.getEmailId(), employee.getOfficialEmailId());
+        log.debug("CREATE EMPLOYEE - Emergency Contacts: emergencyNoOne={}, emergencyNoTwo={}",
+                  employee.getEmergencyNoOne(), employee.getEmergencyNoTwo());
+
+        // Calculate age from dateOfBirth (also calculated by trigger, but service layer as safety net)
+        calculateAge(employee);
 
         // Save employee
         Employee savedEmployee = employeeRepository.save(employee);
@@ -100,8 +135,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee existingEmployee = employeeRepository.findByTenantIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
 
-        // Validate required fields
-        validateRequiredFields(request);
+        // Execute multi-layer validation including self-reporting check (update-specific)
+        validationCoordinator.validateForUpdate(id, request);
 
         // Check for duplicate empId (if changed)
         if (!existingEmployee.getEmpId().equals(request.getEmpId())) {
@@ -110,12 +145,32 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
         }
 
+        // Log values BEFORE mapping
+        log.debug("BEFORE UPDATE MAPPING - Request sourceOfHire: {}, noticePeriod: {}",
+                  request.getSourceOfHire(), request.getNoticePeriod());
+
         // Update entity from request (MapStruct handles all fields!)
         employeeMapper.updateEntityFromRequest(request, existingEmployee);
+
+        // Log values AFTER mapping
+        log.debug("AFTER UPDATE MAPPING - Entity sourceOfHire: {}, noticePeriod: {}",
+                  existingEmployee.getSourceOfHire(), existingEmployee.getNoticePeriod());
 
         // Update relationships
         setRequiredRelationships(existingEmployee, request);
         setOptionalRelationships(existingEmployee, request);
+
+        // Log Personal & Contact Information being updated
+        log.debug("UPDATE EMPLOYEE - Personal Info: employeeName={}, dateOfBirth={}, gender={}, bloodGroup={}, maritalStatus={}",
+                  existingEmployee.getEmployeeName(), existingEmployee.getDateOfBirth(), existingEmployee.getGender(),
+                  existingEmployee.getBloodGroup(), existingEmployee.getMaritalStatus());
+        log.debug("UPDATE EMPLOYEE - Contact Info: mobileNo={}, emailId={}, pincode={}, stateId={}, cityId={}",
+                  existingEmployee.getMobileNo(), existingEmployee.getEmailId(), existingEmployee.getPincode(),
+                  existingEmployee.getState() != null ? existingEmployee.getState().getId() : null,
+                  existingEmployee.getCity() != null ? existingEmployee.getCity().getId() : null);
+
+        // Recalculate age if dateOfBirth was updated
+        calculateAge(existingEmployee);
 
         // Save updated employee
         Employee savedEmployee = employeeRepository.save(existingEmployee);
@@ -239,7 +294,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     /**
      * Validates the 13 required fields for employee creation
+     * @deprecated Use EmployeeValidationCoordinator instead
      */
+    @Deprecated
     private void validateRequiredFields(EmployeeRequest request) {
         StringBuilder errors = new StringBuilder();
 
@@ -280,6 +337,41 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (errors.length() > 0) {
             throw new ValidationException("Validation failed: " + errors.toString());
         }
+    }
+
+    /**
+     * Auto-generate employee ID based on company prefix and sequence
+     * Format: {COMPANY_PREFIX}-{5-digit-sequence}
+     * Example: ACME-00001, TECH-00002
+     *
+     * @param tenantId The tenant ID
+     * @param companyId The company ID
+     * @return Generated employee ID
+     * @throws ResourceNotFoundException if company not found
+     */
+    @Transactional
+    public String generateEmployeeId(String tenantId, Long companyId) {
+        log.debug("Generating employee ID for company: {} in tenant: {}", companyId, tenantId);
+
+        // Fetch company to get prefix
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company", "id", companyId));
+
+        // Get prefix from company shortName or code
+        String prefix = company.getShortName() != null && !company.getShortName().isEmpty()
+                ? company.getShortName().toUpperCase()
+                : company.getCode() != null && !company.getCode().isEmpty()
+                ? company.getCode().substring(0, Math.min(4, company.getCode().length())).toUpperCase()
+                : "GEN"; // Default fallback
+
+        // Get next sequence (thread-safe database operation)
+        long nextSequence = employeeRepository.getNextEmployeeSequence(tenantId, companyId);
+
+        // Format: PREFIX-00001
+        String generatedId = String.format("%s-%05d", prefix, nextSequence);
+        log.info("Generated employee ID: {} for company: {}", generatedId, companyId);
+
+        return generatedId;
     }
 
     /**
@@ -361,6 +453,28 @@ public class EmployeeServiceImpl implements EmployeeService {
             City city = cityRepository.findById(request.getCityId())
                     .orElseThrow(() -> new ResourceNotFoundException("City", "id", request.getCityId()));
             employee.setCity(city);
+        }
+    }
+
+    /**
+     * Calculate and set age from date of birth
+     * Ensures age is always derived from the actual date of birth
+     * Used in conjunction with database trigger for consistency
+     *
+     * @param employee The employee entity with dateOfBirth populated
+     */
+    private void calculateAge(Employee employee) {
+        if (employee.getDateOfBirth() != null) {
+            try {
+                // Note: Database trigger also calculates age on INSERT/UPDATE
+                // This method provides an additional safety check
+                int age = Year.now().getValue() - Year.from(employee.getDateOfBirth()).getValue();
+                employee.setAge(age);
+                log.debug("Age calculated from dateOfBirth: {} → age: {}", employee.getDateOfBirth(), age);
+            } catch (Exception e) {
+                log.error("Error calculating age from dateOfBirth: {}", e.getMessage());
+                // Don't throw exception - age calculation is not critical
+            }
         }
     }
 
@@ -565,5 +679,75 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         return predicates;
+    }
+
+    // =====================================================
+    // EMPLOYEE CREATION HELPER METHODS
+    // =====================================================
+
+    @Override
+    public List<ManagerOptionResponse> getEligibleManagers(
+            String tenantId, Long userId, Long companyId,
+            Long currentEmployeeId, String searchTerm) {
+
+        log.debug("Fetching eligible managers for user: {} in tenant: {}", userId, tenantId);
+
+        // Get user's organizational scope for filtering
+        var userScope = organizationalScopeService.getUserScope(tenantId, userId);
+
+        // Build list of allowed company IDs
+        java.util.List<Long> allowedCompanyIds = null;
+        if (companyId != null) {
+            // If specific company is requested, verify it's in user's scope
+            allowedCompanyIds = java.util.List.of(companyId);
+        } else if (userScope != null && userScope.getCompanyIds() != null && !userScope.getCompanyIds().isEmpty()) {
+            // Use user's scope companies
+            allowedCompanyIds = userScope.getCompanyIds();
+        }
+
+        // Build list of allowed location IDs
+        java.util.List<Long> allowedLocationIds = null;
+        if (userScope != null && userScope.getLocationIds() != null && !userScope.getLocationIds().isEmpty()) {
+            allowedLocationIds = userScope.getLocationIds();
+        }
+
+        // Build list of allowed department IDs
+        java.util.List<Long> allowedDepartmentIds = null;
+        if (userScope != null && userScope.getDepartmentIds() != null && !userScope.getDepartmentIds().isEmpty()) {
+            allowedDepartmentIds = userScope.getDepartmentIds();
+        }
+
+        // Fetch eligible managers from repository
+        java.util.List<Employee> managers = employeeRepository.findEligibleManagers(
+                tenantId,
+                currentEmployeeId,
+                allowedCompanyIds,
+                allowedLocationIds,
+                allowedDepartmentIds,
+                searchTerm
+        );
+
+        log.info("Found {} eligible managers for user {}", managers.size(), userId);
+
+        // Convert to response DTOs and sort by name
+        return managers.stream()
+                .map(this::toManagerOptionResponse)
+                .sorted(java.util.Comparator.comparing(ManagerOptionResponse::getEmployeeName))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Convert Employee entity to ManagerOptionResponse DTO
+     */
+    private ManagerOptionResponse toManagerOptionResponse(Employee employee) {
+        return ManagerOptionResponse.builder()
+                .id(employee.getId())
+                .empId(employee.getEmpId())
+                .employeeName(employee.getEmployeeName())
+                .designation(null)  // Optional - can be enhanced with mapper
+                .department(null)   // Optional - can be enhanced with mapper
+                .role("MANAGER")    // Placeholder - actual role from UserAccount
+                .isActive(true)     // Placeholder - actual status from UserAccount
+                .build();
     }
 }

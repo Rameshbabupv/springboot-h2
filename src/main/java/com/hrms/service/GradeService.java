@@ -29,4 +29,9 @@ public interface GradeService {
     void deleteGrade(Long id);
 
     boolean existsById(Long id);
+
+    /**
+     * Get grades for selection with organizational scope filtering.
+     */
+    List<Grade> getGradesForSelection(String tenantId, Long userId, boolean isEditMode, Long currentGradeId);
 }

@@ -114,6 +114,32 @@ public class PayheadMaster {
     @Builder.Default
     private Boolean affectsLwf = false;
 
+    @Column(name = "affects_pt")
+    @Builder.Default
+    private Boolean affectsPt = false;  // Professional Tax applicability
+
+    // ==================== Rules & Limits ====================
+
+    @Column(name = "rounding_rule", length = 20)
+    @Builder.Default
+    private String roundingRule = "NONE";  // NONE, ROUND, FLOOR, CEIL, ROUND_10, ROUND_100
+
+    @Column(name = "min_value", precision = 10, scale = 2)
+    private BigDecimal minValue;  // Minimum amount for this payhead
+
+    @Column(name = "max_value", precision = 10, scale = 2)
+    private BigDecimal maxValue;  // Maximum amount for this payhead
+
+    // ==================== Conditional Application ====================
+
+    @Column(name = "applicable_condition", length = 500)
+    private String applicableCondition;  // e.g., "GROSS <= 21000"
+
+    // ==================== Additional Information ====================
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;  // Payhead description/notes
+
     // ==================== Display Configuration ====================
 
     @Column(name = "display_order")

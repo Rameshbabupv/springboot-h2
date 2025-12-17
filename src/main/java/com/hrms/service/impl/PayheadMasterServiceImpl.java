@@ -92,6 +92,12 @@ public class PayheadMasterServiceImpl implements PayheadMasterService {
             .affectsEsi(input.getAffectsEsi() != null ? input.getAffectsEsi() : false)
             .affectsGratuity(input.getAffectsGratuity() != null ? input.getAffectsGratuity() : false)
             .affectsLwf(input.getAffectsLwf() != null ? input.getAffectsLwf() : false)
+            .affectsPt(input.getAffectsPt() != null ? input.getAffectsPt() : false)
+            .roundingRule(input.getRoundingRule() != null ? input.getRoundingRule() : "NONE")
+            .minValue(input.getMinValue())
+            .maxValue(input.getMaxValue())
+            .applicableCondition(input.getApplicableCondition())
+            .description(input.getDescription())
             .displayOrder(input.getDisplayOrder() != null ? input.getDisplayOrder() : 0)
             .showInPayslip(input.getShowInPayslip() != null ? input.getShowInPayslip() : true)
             .isMandatory(input.getIsMandatory() != null ? input.getIsMandatory() : false)
@@ -124,6 +130,13 @@ public class PayheadMasterServiceImpl implements PayheadMasterService {
         if (input.getAffectsEsi() != null) payhead.setAffectsEsi(input.getAffectsEsi());
         if (input.getAffectsGratuity() != null) payhead.setAffectsGratuity(input.getAffectsGratuity());
         if (input.getAffectsLwf() != null) payhead.setAffectsLwf(input.getAffectsLwf());
+        if (input.getAffectsPt() != null) payhead.setAffectsPt(input.getAffectsPt());
+
+        if (input.getRoundingRule() != null) payhead.setRoundingRule(input.getRoundingRule());
+        if (input.getMinValue() != null) payhead.setMinValue(input.getMinValue());
+        if (input.getMaxValue() != null) payhead.setMaxValue(input.getMaxValue());
+        if (input.getApplicableCondition() != null) payhead.setApplicableCondition(input.getApplicableCondition());
+        if (input.getDescription() != null) payhead.setDescription(input.getDescription());
 
         if (input.getDisplayOrder() != null) payhead.setDisplayOrder(input.getDisplayOrder());
         if (input.getShowInPayslip() != null) payhead.setShowInPayslip(input.getShowInPayslip());

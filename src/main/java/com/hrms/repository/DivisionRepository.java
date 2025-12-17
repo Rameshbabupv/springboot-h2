@@ -33,4 +33,7 @@ public interface DivisionRepository extends JpaRepository<Division, Long> {
            "OR LOWER(d.code) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Division> searchDivisions(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<Division> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

@@ -34,4 +34,7 @@ public interface JobFunctionRepository extends JpaRepository<JobFunction, Long> 
            "OR LOWER(j.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(j.functionGroup) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<JobFunction> searchJobFunctions(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<JobFunction> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

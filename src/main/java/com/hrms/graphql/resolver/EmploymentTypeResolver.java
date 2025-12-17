@@ -57,6 +57,27 @@ public class EmploymentTypeResolver {
         return employmentTypeService.searchEmploymentTypes(tenantId, searchTerm);
     }
 
+    /**
+     * Get employment types for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<EmploymentType> employmentTypesForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentEmploymentTypeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentEmploymentTypeId != null ? Long.parseLong(currentEmploymentTypeId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: employmentTypesForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<EmploymentType> result = employmentTypeService.getEmploymentTypesForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: employmentTypesForSelection - returned {} employment types", result.size());
+        return result;
+    }
+
     @MutationMapping
     public EmploymentType createEmploymentType(@Argument EmploymentTypeInput input) {
         String tenantId = input.getTenantId() != null

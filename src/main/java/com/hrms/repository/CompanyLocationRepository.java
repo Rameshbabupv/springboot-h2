@@ -21,4 +21,7 @@ public interface CompanyLocationRepository extends JpaRepository<CompanyLocation
     boolean existsByCompanyIdAndCode(Long companyId, String code);
 
     void deleteByCompanyId(Long companyId);
+
+    // Scope-aware query - filters by company AND allowed location IDs
+    List<CompanyLocation> findByCompanyIdAndIdInAndIsActiveTrue(Long companyId, List<Long> ids);
 }

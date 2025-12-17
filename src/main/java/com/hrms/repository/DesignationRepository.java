@@ -31,4 +31,7 @@ public interface DesignationRepository extends JpaRepository<Designation, Long> 
            "OR LOWER(d.code) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Designation> searchDesignations(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<Designation> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

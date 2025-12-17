@@ -1,18 +1,24 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.JobFunctionRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.JobFunction;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.JobFunctionRepository;
 import com.hrms.service.JobFunctionService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for JobFunction operations.
@@ -24,6 +30,7 @@ import java.util.Optional;
 public class JobFunctionServiceImpl implements JobFunctionService {
 
     private final JobFunctionRepository jobFunctionRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<JobFunction> getAllJobFunctions() {
@@ -149,6 +156,39 @@ public class JobFunctionServiceImpl implements JobFunctionService {
     @Override
     public boolean existsById(Long id) {
         return jobFunctionRepository.existsById(id);
+    }
+
+    @Override
+    public List<JobFunction> getJobFunctionsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentJobFunctionId) {
+        log.debug("Fetching job functions for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getJobFunctionIds() != null && !userScope.getJobFunctionIds().isEmpty()) {
+            allowedIds = userScope.getJobFunctionIds();
+        }
+
+        List<JobFunction> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            scopedList = jobFunctionRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            scopedList = jobFunctionRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        if (isEditMode && currentJobFunctionId != null) {
+            boolean found = scopedList.stream().anyMatch(jf -> jf.getId().equals(currentJobFunctionId));
+            if (!found) {
+                jobFunctionRepository.findById(currentJobFunctionId).ifPresent(scopedList::add);
+            }
+        }
+
+        List<JobFunction> result = scopedList.stream()
+                .sorted(Comparator.comparing(JobFunction::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} job functions for selection", result.size());
+        return result;
     }
 
     private JobFunction mapToEntity(JobFunctionRequest request) {

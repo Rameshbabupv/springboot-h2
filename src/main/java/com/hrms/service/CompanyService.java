@@ -36,6 +36,12 @@ public interface CompanyService {
     CompanyLocation updateLocation(Long id, CompanyLocationRequest request);
     void deleteLocation(Long id);
 
+    /**
+     * Get locations for selection with organizational scope filtering and company filtering.
+     * This is a special case that filters by companyId first, then applies organizational scope.
+     */
+    List<CompanyLocation> getLocationsForSelection(String tenantId, Long userId, Long companyId, boolean isEditMode, Long currentLocationId);
+
     // Bank Accounts
     List<CompanyBankAccount> getBankAccountsByCompanyId(Long companyId);
     CompanyBankAccount getBankAccountById(Long id);

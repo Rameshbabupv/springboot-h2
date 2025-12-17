@@ -1,18 +1,24 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.EmploymentTypeRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.EmploymentType;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.EmploymentTypeRepository;
 import com.hrms.service.EmploymentTypeService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for EmploymentType operations.
@@ -24,6 +30,7 @@ import java.util.Optional;
 public class EmploymentTypeServiceImpl implements EmploymentTypeService {
 
     private final EmploymentTypeRepository employmentTypeRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<EmploymentType> getAllEmploymentTypes() {
@@ -143,6 +150,39 @@ public class EmploymentTypeServiceImpl implements EmploymentTypeService {
     @Override
     public boolean existsById(Long id) {
         return employmentTypeRepository.existsById(id);
+    }
+
+    @Override
+    public List<EmploymentType> getEmploymentTypesForSelection(String tenantId, Long userId, boolean isEditMode, Long currentEmploymentTypeId) {
+        log.debug("Fetching employment types for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getEmploymentTypeIds() != null && !userScope.getEmploymentTypeIds().isEmpty()) {
+            allowedIds = userScope.getEmploymentTypeIds();
+        }
+
+        List<EmploymentType> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            scopedList = employmentTypeRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            scopedList = employmentTypeRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        if (isEditMode && currentEmploymentTypeId != null) {
+            boolean found = scopedList.stream().anyMatch(et -> et.getId().equals(currentEmploymentTypeId));
+            if (!found) {
+                employmentTypeRepository.findById(currentEmploymentTypeId).ifPresent(scopedList::add);
+            }
+        }
+
+        List<EmploymentType> result = scopedList.stream()
+                .sorted(Comparator.comparing(EmploymentType::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} employment types for selection", result.size());
+        return result;
     }
 
     private EmploymentType mapToEntity(EmploymentTypeRequest request) {

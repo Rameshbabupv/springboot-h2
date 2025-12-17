@@ -1,18 +1,24 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.GradeRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.Grade;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.GradeRepository;
 import com.hrms.service.GradeService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Grade operations.
@@ -24,6 +30,7 @@ import java.util.Optional;
 public class GradeServiceImpl implements GradeService {
 
     private final GradeRepository gradeRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<Grade> getAllGrades() {
@@ -143,6 +150,39 @@ public class GradeServiceImpl implements GradeService {
     @Override
     public boolean existsById(Long id) {
         return gradeRepository.existsById(id);
+    }
+
+    @Override
+    public List<Grade> getGradesForSelection(String tenantId, Long userId, boolean isEditMode, Long currentGradeId) {
+        log.debug("Fetching grades for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getGradeIds() != null && !userScope.getGradeIds().isEmpty()) {
+            allowedIds = userScope.getGradeIds();
+        }
+
+        List<Grade> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            scopedList = gradeRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            scopedList = gradeRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        if (isEditMode && currentGradeId != null) {
+            boolean found = scopedList.stream().anyMatch(g -> g.getId().equals(currentGradeId));
+            if (!found) {
+                gradeRepository.findById(currentGradeId).ifPresent(scopedList::add);
+            }
+        }
+
+        List<Grade> result = scopedList.stream()
+                .sorted(Comparator.comparing(Grade::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} grades for selection", result.size());
+        return result;
     }
 
     private Grade mapToEntity(GradeRequest request) {

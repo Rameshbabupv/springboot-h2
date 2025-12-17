@@ -33,4 +33,7 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
            "OR LOWER(d.code) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Department> searchDepartments(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<Department> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

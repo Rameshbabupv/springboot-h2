@@ -29,4 +29,7 @@ public interface GradeRepository extends JpaRepository<Grade, Long> {
            "OR LOWER(g.code) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(g.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Grade> searchGrades(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<Grade> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

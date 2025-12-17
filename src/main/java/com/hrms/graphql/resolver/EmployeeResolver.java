@@ -4,6 +4,7 @@ import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeePageResponse;
 import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.dto.response.ManagerOptionResponse;
 import com.hrms.security.JwtClaimsExtractor;
 import com.hrms.service.EmployeeService;
 import com.hrms.service.OrganizationalScopeService;
@@ -281,12 +282,68 @@ public class EmployeeResolver {
     }
 
     // =====================================================
+    // NEW: EMPLOYEE CREATION HELPER QUERIES
+    // =====================================================
+
+    /**
+     * Get eligible managers for employee assignment
+     * Loads managers with MANAGER/ADMIN roles filtered by user organizational scope
+     * Prevents self-reporting (current employee cannot be assigned as manager to themselves)
+     */
+    @QueryMapping
+    public List<ManagerOptionResponse> eligibleManagers(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument String companyId,
+            @Argument String currentEmployeeId,
+            @Argument String searchTerm) {
+
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long companyIdLong = companyId != null ? Long.parseLong(companyId) : null;
+        Long currentEmpIdLong = currentEmployeeId != null ? Long.parseLong(currentEmployeeId) : null;
+
+        log.debug("GraphQL Query: eligibleManagers - tenantId: {}, userId: {}, companyId: {}, currentEmployeeId: {}, searchTerm: {}",
+                tenantId, userId, companyId, currentEmployeeId, searchTerm);
+
+        List<ManagerOptionResponse> result = employeeService.getEligibleManagers(
+                tenantId, userIdLong, companyIdLong, currentEmpIdLong, searchTerm
+        );
+
+        log.info("GraphQL Response: eligibleManagers - returned {} managers for user: {}", result.size(), userId);
+        return result;
+    }
+
+    /**
+     * Generate employee ID automatically based on company prefix
+     * Format: {COMPANY_PREFIX}-{5-digit-sequence}
+     * Example: ACME-00001, TECH-00002
+     */
+    @QueryMapping
+    public String generateEmployeeId(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String companyId) {
+
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long companyIdLong = Long.parseLong(companyId);
+
+        log.debug("GraphQL Query: generateEmployeeId - tenantId: {}, companyId: {}", tenantId, companyId);
+
+        String generatedId = employeeService.generateEmployeeId(tenantId, companyIdLong);
+
+        log.info("GraphQL Response: generateEmployeeId - generated ID: {}", generatedId);
+        return generatedId;
+    }
+
+    // =====================================================
     // MUTATION OPERATIONS
     // =====================================================
 
     @MutationMapping
     public EmployeeResponse createEmployee(@Argument EmployeeRequest input) {
         log.debug("GraphQL Mutation: createEmployee - empId: {}, tenantId: {}", input.getEmpId(), input.getTenantId());
+        log.debug("GraphQL Mutation: createEmployee - sourceOfHire: {}, noticePeriod: {}",
+                  input.getSourceOfHire(), input.getNoticePeriod());
         EmployeeResponse result = employeeService.createEmployee(input);
         log.info("GraphQL Response: createEmployee - created employee id: {}, empId: {}, name: {}",
                  result.getId(), result.getEmpId(), result.getEmployeeName());
@@ -297,6 +354,8 @@ public class EmployeeResolver {
     public EmployeeResponse updateEmployee(@Argument(name = "tenantId") String tenantIdArg, @Argument String id, @Argument EmployeeRequest input) {
         String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
         log.debug("GraphQL Mutation: updateEmployee - id: {}, tenantId: {}", id, tenantId);
+        log.debug("GraphQL Mutation: updateEmployee - sourceOfHire: {}, noticePeriod: {}",
+                  input.getSourceOfHire(), input.getNoticePeriod());
         EmployeeResponse result = employeeService.updateEmployee(tenantId, Long.parseLong(id), input);
         log.info("GraphQL Response: updateEmployee - updated employee id: {}, empId: {}",
                  result.getId(), result.getEmpId());

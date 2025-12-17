@@ -3,6 +3,7 @@ package com.hrms.service;
 import com.hrms.dto.request.EmployeeFilterCriteria;
 import com.hrms.dto.request.EmployeeRequest;
 import com.hrms.dto.response.EmployeeResponse;
+import com.hrms.dto.response.ManagerOptionResponse;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
@@ -120,4 +121,40 @@ public interface EmployeeService {
      * @return List of employee responses
      */
     List<EmployeeResponse> getFilteredEmployeesList(EmployeeFilterCriteria criteria);
+
+    // =====================================================
+    // NEW: Employee Creation Helper Queries
+    // =====================================================
+
+    /**
+     * Get eligible managers for employee assignment
+     * Loads managers with MANAGER/ADMIN roles filtered by user organizational scope
+     * Excludes self-reporting (current employee cannot report to themselves)
+     * Supports search by name or employee ID
+     *
+     * @param tenantId The tenant ID
+     * @param userId The current user ID (for scope filtering)
+     * @param companyId Optional company filter (null = all in scope)
+     * @param currentEmployeeId The employee being assigned (to prevent self-reporting)
+     * @param searchTerm Search filter (null/empty = no search)
+     * @return List of eligible managers sorted by name
+     */
+    List<ManagerOptionResponse> getEligibleManagers(
+            String tenantId,
+            Long userId,
+            Long companyId,
+            Long currentEmployeeId,
+            String searchTerm
+    );
+
+    /**
+     * Auto-generate employee ID based on company prefix and sequence
+     * Format: {COMPANY_PREFIX}-{5-digit-sequence}
+     * Example: ACME-00001, TECH-00002
+     *
+     * @param tenantId The tenant ID
+     * @param companyId The company ID
+     * @return Generated employee ID
+     */
+    String generateEmployeeId(String tenantId, Long companyId);
 }

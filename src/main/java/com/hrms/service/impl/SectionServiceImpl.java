@@ -1,5 +1,6 @@
 package com.hrms.service.impl;
 
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.dto.request.SectionRequest;
 import com.hrms.entity.Department;
 import com.hrms.entity.Section;
@@ -7,14 +8,17 @@ import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.DepartmentRepository;
 import com.hrms.repository.SectionRepository;
+import com.hrms.service.OrganizationalScopeService;
 import com.hrms.service.SectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Section operations.
@@ -27,6 +31,7 @@ public class SectionServiceImpl implements SectionService {
 
     private final SectionRepository sectionRepository;
     private final DepartmentRepository departmentRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<Section> getAllSections() {
@@ -153,6 +158,45 @@ public class SectionServiceImpl implements SectionService {
     @Override
     public boolean existsById(Long id) {
         return sectionRepository.existsById(id);
+    }
+
+    @Override
+    public List<Section> getSectionsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentSectionId) {
+        log.debug("Fetching sections for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        // Get user's organizational scope
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getSectionIds() != null && !userScope.getSectionIds().isEmpty()) {
+            allowedIds = userScope.getSectionIds();
+        }
+
+        // Fetch scoped sections
+        List<Section> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Super admin - get all active sections
+            scopedList = sectionRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            // Scoped user - get only allowed sections
+            scopedList = sectionRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        // In edit mode, include current value even if outside scope
+        if (isEditMode && currentSectionId != null) {
+            boolean found = scopedList.stream().anyMatch(s -> s.getId().equals(currentSectionId));
+            if (!found) {
+                sectionRepository.findById(currentSectionId).ifPresent(scopedList::add);
+            }
+        }
+
+        // Sort by name
+        List<Section> result = scopedList.stream()
+                .sorted(Comparator.comparing(Section::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} sections for selection", result.size());
+        return result;
     }
 
     private Section mapToEntity(SectionRequest request) {

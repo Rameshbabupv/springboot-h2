@@ -95,6 +95,27 @@ public class DepartmentResolver {
         return result;
     }
 
+    /**
+     * Get departments for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<Department> departmentsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentDepartmentId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentDepartmentId != null ? Long.parseLong(currentDepartmentId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: departmentsForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<Department> result = departmentService.getDepartmentsForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: departmentsForSelection - returned {} departments", result.size());
+        return result;
+    }
+
     @MutationMapping
     public Department createDepartment(@Argument DepartmentInput input) {
         // Get tenantId from JWT if not provided in input

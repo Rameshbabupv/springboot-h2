@@ -418,6 +418,26 @@ type TemplateReference {
     effectiveTo: String
 }
 
+# Applicable Employee Template Types (for Employee Creation)
+type TemplateSectionSummary {
+    sectionName: String!
+    sectionCode: String!
+    fieldCount: Int!
+}
+
+type ApplicableTemplateResponse {
+    templateId: ID!
+    templateName: String!
+    templateCode: String!
+    description: String
+    priority: Int!
+    requiredFields: [String!]!
+    optionalFields: [String!]!
+    customFields: [String!]!
+    sectionCount: Int!
+    sections: [TemplateSectionSummary!]!
+}
+
 type Query {
     # Company queries
     companies: [Company!]!
@@ -436,6 +456,9 @@ type Query {
     companyLocations(companyId: ID!): [CompanyLocation!]!
     companyLocation(id: ID!): CompanyLocation
 
+    # NEW: Scope-aware location selection with company filtering for Employee Creation
+    locationsForSelection(tenantId: String!, userId: ID!, companyId: ID!, isEditMode: Boolean, currentLocationId: ID): [CompanyLocation!]!
+
     # Company Bank Account queries
     companyBankAccounts(companyId: ID!): [CompanyBankAccount!]!
     companyBankAccount(id: ID!): CompanyBankAccount
@@ -448,6 +471,9 @@ type Query {
     activeDepartments: [Department!]!
     searchDepartments(tenantId: String!, searchTerm: String): [Department!]!
 
+    # NEW: Scope-aware department selection for Employee Creation
+    departmentsForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentDepartmentId: ID): [Department!]!
+
     # Designation queries
     designations: [Designation!]!
     designation(id: ID!): Designation
@@ -455,6 +481,9 @@ type Query {
     activeDesignationsByTenant(tenantId: String!): [Designation!]!
     activeDesignations: [Designation!]!
     searchDesignations(tenantId: String!, searchTerm: String): [Designation!]!
+
+    # NEW: Scope-aware designation selection for Employee Creation
+    designationsForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentDesignationId: ID): [Designation!]!
 
     # Employee queries moved to employee.graphqls
 
@@ -496,12 +525,18 @@ type Query {
     activeDivisions: [Division!]!
     searchDivisions(tenantId: String!, searchTerm: String): [Division!]!
 
+    # NEW: Scope-aware division selection for Employee Creation
+    divisionsForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentDivisionId: ID): [Division!]!
+
     # Section queries
     sections: [Section!]!
     section(id: ID!): Section
     sectionsByTenant(tenantId: String!): [Section!]!
     sectionsByDepartment(departmentId: ID!): [Section!]!
     activeSections: [Section!]!
+
+    # NEW: Scope-aware section selection for Employee Creation
+    sectionsForSelection(tenantId: String!, userId: ID!, departmentId: ID, isEditMode: Boolean, currentSectionId: ID): [Section!]!
 
     # JobFunction queries
     jobFunctions: [JobFunction!]!
@@ -512,6 +547,9 @@ type Query {
     jobFunctionsByGroup(tenantId: String!, functionGroup: String!): [JobFunction!]!
     searchJobFunctions(tenantId: String!, searchTerm: String): [JobFunction!]!
 
+    # NEW: Scope-aware job function selection for Employee Creation
+    jobFunctionsForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentJobFunctionId: ID): [JobFunction!]!
+
     # EmploymentType queries
     employmentTypes: [EmploymentType!]!
     employmentType(id: ID!): EmploymentType
@@ -519,12 +557,18 @@ type Query {
     activeEmploymentTypes: [EmploymentType!]!
     searchEmploymentTypes(tenantId: String!, searchTerm: String): [EmploymentType!]!
 
+    # NEW: Scope-aware employment type selection for Employee Creation
+    employmentTypesForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentEmploymentTypeId: ID): [EmploymentType!]!
+
     # Grade queries
     grades: [Grade!]!
     grade(id: ID!): Grade
     gradesByTenant(tenantId: String!): [Grade!]!
     activeGrades: [Grade!]!
     searchGrades(tenantId: String!, searchTerm: String): [Grade!]!
+
+    # NEW: Scope-aware grade selection for Employee Creation
+    gradesForSelection(tenantId: String!, userId: ID!, isEditMode: Boolean, currentGradeId: ID): [Grade!]!
 
     # Employee Template queries
     employeeTemplates(tenantId: String!): [EmployeeTemplate!]!
@@ -537,6 +581,20 @@ type Query {
         criteriaType: String!
         excludeTemplateId: ID
     ): AvailableCriteriaResponse!
+
+    # NEW: Find applicable template for employee creation based on organizational criteria
+    applicableEmployeeTemplate(
+        tenantId: String!
+        companyId: ID!
+        locationId: ID!
+        departmentId: ID!
+        designationId: ID!
+        jobFunctionId: ID!
+        employmentTypeId: ID!
+        divisionId: ID
+        sectionId: ID
+        gradeId: ID
+    ): ApplicableTemplateResponse
 
     # Employee Template Section queries
     employeeTemplateSections(templateId: ID!): [EmployeeTemplateSection!]!

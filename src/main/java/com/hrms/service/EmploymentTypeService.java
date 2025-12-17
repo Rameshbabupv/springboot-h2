@@ -29,4 +29,9 @@ public interface EmploymentTypeService {
     void deleteEmploymentType(Long id);
 
     boolean existsById(Long id);
+
+    /**
+     * Get employment types for selection with organizational scope filtering.
+     */
+    List<EmploymentType> getEmploymentTypesForSelection(String tenantId, Long userId, boolean isEditMode, Long currentEmploymentTypeId);
 }

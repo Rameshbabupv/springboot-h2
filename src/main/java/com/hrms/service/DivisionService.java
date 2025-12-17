@@ -29,4 +29,15 @@ public interface DivisionService {
     void deleteDivision(Long id);
 
     boolean existsById(Long id);
+
+    /**
+     * Get divisions for selection with organizational scope filtering.
+     *
+     * @param tenantId Tenant ID
+     * @param userId User ID for scope filtering
+     * @param isEditMode Whether in edit mode (to include current value)
+     * @param currentDivisionId Current division ID (for edit mode)
+     * @return List of divisions within user's scope
+     */
+    List<Division> getDivisionsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentDivisionId);
 }

@@ -36,6 +36,18 @@ public class PayheadInput {
     private Boolean affectsEsi;
     private Boolean affectsGratuity;
     private Boolean affectsLwf;
+    private Boolean affectsPt;  // Professional Tax
+
+    // Rules & Limits
+    private String roundingRule;  // NONE, ROUND, FLOOR, CEIL, ROUND_10, ROUND_100
+    private BigDecimal minValue;  // Minimum amount
+    private BigDecimal maxValue;  // Maximum amount
+
+    // Conditional Application
+    private String applicableCondition;  // e.g., "GROSS <= 21000"
+
+    // Additional Information
+    private String description;
 
     private Integer displayOrder;
     private Boolean showInPayslip;

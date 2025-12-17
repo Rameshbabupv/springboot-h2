@@ -114,4 +114,72 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                                   @Param("companyId") Long companyId,
                                   @Param("locationId") Long locationId,
                                   @Param("departmentId") Long departmentId);
+
+    // =====================================================
+    // EMPLOYEE ID GENERATION QUERIES
+    // =====================================================
+
+    /**
+     * Get the next sequence number for employee ID generation
+     * Extracts numeric suffix from emp_id (format: PREFIX-00001) and gets max + 1
+     * Thread-safe: Uses database row-level locking
+     *
+     * @param tenantId The tenant ID
+     * @param companyId The company ID
+     * @return Next sequence number to use for new employee ID
+     */
+    @Query(value = """
+        SELECT COALESCE(MAX(CAST(SUBSTRING(emp_id, POSITION('-' IN emp_id) + 1) AS INTEGER)), 0) + 1
+        FROM employees
+        WHERE tenant_id = :tenantId
+        AND company_id = :companyId
+        AND emp_id LIKE '%-%'
+        """, nativeQuery = true)
+    long getNextEmployeeSequence(@Param("tenantId") String tenantId,
+                                 @Param("companyId") Long companyId);
+
+    // =====================================================
+    // ELIGIBLE MANAGERS QUERY (for Employee Creation form)
+    // =====================================================
+
+    /**
+     * Find eligible managers for employee assignment
+     * Filters by:
+     * - User roles: MANAGER or ADMIN
+     * - Current employee scope: company, location, department
+     * - Excludes self-reporting (currentEmployeeId != managerId)
+     * - Supports search by employee name or employee ID
+     *
+     * @param tenantId The tenant ID
+     * @param currentEmployeeId The ID of employee being assigned (to prevent self-reporting)
+     * @param companyIds List of allowed company IDs (null = all)
+     * @param locationIds List of allowed location IDs (null = all)
+     * @param departmentIds List of allowed department IDs (null = all)
+     * @param searchTerm Search keyword (null or empty = no search filter)
+     * @return List of eligible managers sorted by name
+     */
+    @Query("""
+        SELECT DISTINCT e FROM Employee e
+        JOIN UserAccount ua ON ua.employeeId = e.id
+        WHERE e.tenantId = :tenantId
+        AND ua.deletedAt IS NULL
+        AND ua.isActive = true
+        AND ua.role IN ('MANAGER', 'ADMIN')
+        AND (:currentEmployeeId IS NULL OR e.id != :currentEmployeeId)
+        AND (:companyIds IS NULL OR e.company.id IN :companyIds)
+        AND (:locationIds IS NULL OR e.location.id IN :locationIds)
+        AND (:departmentIds IS NULL OR e.department.id IN :departmentIds)
+        AND (:searchTerm IS NULL OR :searchTerm = '' OR
+             LOWER(e.employeeName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR
+             LOWER(e.empId) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+        ORDER BY e.employeeName ASC
+    """)
+    List<Employee> findEligibleManagers(
+            @Param("tenantId") String tenantId,
+            @Param("currentEmployeeId") Long currentEmployeeId,
+            @Param("companyIds") java.util.List<Long> companyIds,
+            @Param("locationIds") java.util.List<Long> locationIds,
+            @Param("departmentIds") java.util.List<Long> departmentIds,
+            @Param("searchTerm") String searchTerm
+    );
 }

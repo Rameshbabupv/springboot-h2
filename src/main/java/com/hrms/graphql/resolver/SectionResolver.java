@@ -6,6 +6,7 @@ import com.hrms.graphql.input.SectionInput;
 import com.hrms.repository.DepartmentRepository;
 import com.hrms.repository.SectionRepository;
 import com.hrms.security.JwtClaimsExtractor;
+import com.hrms.service.SectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -30,6 +31,7 @@ public class SectionResolver {
 
     private final SectionRepository sectionRepository;
     private final DepartmentRepository departmentRepository;
+    private final SectionService sectionService;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @QueryMapping
@@ -56,6 +58,27 @@ public class SectionResolver {
     @QueryMapping
     public List<Section> activeSections() {
         return sectionRepository.findByIsActiveTrue();
+    }
+
+    /**
+     * Get sections for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<Section> sectionsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentSectionId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentSectionId != null ? Long.parseLong(currentSectionId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: sectionsForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<Section> result = sectionService.getSectionsForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: sectionsForSelection - returned {} sections", result.size());
+        return result;
     }
 
     @MutationMapping

@@ -31,4 +31,9 @@ public interface JobFunctionService {
     void deleteJobFunction(Long id);
 
     boolean existsById(Long id);
+
+    /**
+     * Get job functions for selection with organizational scope filtering.
+     */
+    List<JobFunction> getJobFunctionsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentJobFunctionId);
 }

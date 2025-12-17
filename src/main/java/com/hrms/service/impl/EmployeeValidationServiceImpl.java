@@ -2,9 +2,11 @@ package com.hrms.service.impl;
 
 import com.hrms.entity.EmployeeTemplateField;
 import com.hrms.entity.FieldDefinitionMaster;
+import com.hrms.exception.DateValidationException;
 import com.hrms.repository.EmployeeTemplateFieldRepository;
 import com.hrms.repository.FieldDefinitionMasterRepository;
 import com.hrms.service.EmployeeValidationService;
+import com.hrms.validator.DateValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -161,14 +163,120 @@ public class EmployeeValidationServiceImpl implements EmployeeValidationService 
         // Date validation
         if (fieldDef != null && "date".equals(fieldDef.getFieldType())) {
             try {
-                LocalDate.parse(stringValue);
-            } catch (DateTimeParseException e) {
-                return new FieldValidationResult(fieldName, fieldLabel, false,
-                        fieldLabel + " must be a valid date");
+                // Use DateValidator for strict parsing and business rule validation
+                LocalDate parsedDate = DateValidator.parseAndValidateDate(stringValue, fieldLabel);
+
+                if (parsedDate != null) {
+                    // Validate no future dates for specific fields
+                    if ("dateOfBirth".equals(fieldName) || "dateOfJoin".equals(fieldName)) {
+                        if (parsedDate.isAfter(LocalDate.now())) {
+                            return new FieldValidationResult(fieldName, fieldLabel, false,
+                                    fieldLabel + " cannot be a future date. Invalid value: " + stringValue);
+                        }
+                    }
+
+                    // Validate min date (if specified in rules)
+                    if (validationRules.containsKey("minDate")) {
+                        try {
+                            LocalDate minDate = LocalDate.parse(validationRules.get("minDate").toString());
+                            if (parsedDate.isBefore(minDate)) {
+                                return new FieldValidationResult(fieldName, fieldLabel, false,
+                                        fieldLabel + " must not be before " + minDate);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Invalid minDate rule for field {}: {}", fieldName, validationRules.get("minDate"));
+                        }
+                    }
+
+                    // Validate max date (if specified in rules)
+                    if (validationRules.containsKey("maxDate")) {
+                        try {
+                            LocalDate maxDate = LocalDate.parse(validationRules.get("maxDate").toString());
+                            if (parsedDate.isAfter(maxDate)) {
+                                return new FieldValidationResult(fieldName, fieldLabel, false,
+                                        fieldLabel + " must not be after " + maxDate);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Invalid maxDate rule for field {}: {}", fieldName, validationRules.get("maxDate"));
+                        }
+                    }
+                }
+            } catch (DateValidationException e) {
+                return new FieldValidationResult(fieldName, fieldLabel, false, e.getMessage());
             }
         }
 
         return new FieldValidationResult(fieldName, fieldLabel, true, null);
+    }
+
+    /**
+     * Validate date field relationships (cross-field date validation)
+     * Ensures dates follow business logic constraints:
+     * - dateOfJoin <= dateOfConfirm (if provided)
+     * - dateOfConfirm <= dateOfRetirement (if provided)
+     * - dateOfJoin <= dateOfRetirement (if provided)
+     * - dateOfBirth at least 18 years before dateOfJoin
+     *
+     * @param employeeData Map containing all employee data with date fields as strings
+     * @return List of FieldValidationResult containing all date relationship errors
+     */
+    public List<FieldValidationResult> validateDateRelationships(Map<String, Object> employeeData) {
+        log.debug("Validating date relationships");
+        List<FieldValidationResult> errors = new ArrayList<>();
+
+        try {
+            // Parse individual dates with validation
+            LocalDate dateOfBirth = parseEmployeeDate(employeeData.get("dateOfBirth"), "Date of Birth");
+            LocalDate dateOfJoin = parseEmployeeDate(employeeData.get("dateOfJoin"), "Date of Joining");
+            LocalDate dateOfConfirm = parseEmployeeDate(employeeData.get("dateOfConfirm"), "Date of Confirmation");
+            LocalDate dateOfRetirement = parseEmployeeDate(employeeData.get("dateOfRetirement"), "Date of Retirement");
+
+            // Use DateValidator to validate relationships
+            if (dateOfBirth != null && dateOfJoin != null) {
+                DateValidator.validateDateRelationships(dateOfJoin, dateOfConfirm, dateOfRetirement, dateOfBirth);
+            }
+
+        } catch (DateValidationException e) {
+            log.error("Date relationship validation failed: {}", e.getMessage());
+            String fieldName = e.getFieldName();
+            String fieldLabel = convertFieldNameToLabel(fieldName);
+            errors.add(new FieldValidationResult(fieldName, fieldLabel, false, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error during date relationship validation: {}", e.getMessage());
+            errors.add(new FieldValidationResult("date", "Date Fields", false,
+                    "Date validation failed: " + e.getMessage()));
+        }
+
+        return errors;
+    }
+
+    /**
+     * Parse date from employee data map, returns null if not present or empty
+     * Throws DateValidationException on parse failure
+     */
+    private LocalDate parseEmployeeDate(Object dateValue, String fieldLabel) throws DateValidationException {
+        if (dateValue == null || dateValue.toString().trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return DateValidator.parseAndValidateDate(dateValue.toString().trim(), fieldLabel);
+        } catch (DateValidationException e) {
+            throw e;
+        }
+    }
+
+    /**
+     * Convert field name (snake_case or camelCase) to readable label
+     */
+    private String convertFieldNameToLabel(String fieldName) {
+        return switch (fieldName.toLowerCase()) {
+            case "dateofbirth" -> "Date of Birth";
+            case "dateofjoining", "dateofjoin" -> "Date of Joining";
+            case "dateofconfirm", "dateofconfirmation" -> "Date of Confirmation";
+            case "dateofretirement" -> "Date of Retirement";
+            default -> fieldName;
+        };
     }
 
     @Override

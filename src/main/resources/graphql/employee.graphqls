@@ -17,6 +17,22 @@ extend type Query {
     employeeCount(tenantId: String!): Int!
     employeeCountByStatus(tenantId: String!, status: String!): Int!
 
+    # NEW: Manager selection query for Employee Creation form
+    # Loads eligible managers (MANAGER/ADMIN roles) filtered by user scope and company
+    eligibleManagers(
+        tenantId: String!
+        userId: ID!
+        companyId: ID
+        currentEmployeeId: ID
+        searchTerm: String
+    ): [ManagerOption!]!
+
+    # NEW: Auto-generate employee ID based on company prefix
+    generateEmployeeId(
+        tenantId: String!
+        companyId: ID!
+    ): String!
+
     # NEW: Advanced filtered employee queries with organizational scope
     filteredEmployees(
         tenantId: String!
@@ -97,10 +113,10 @@ type Employee {
     sourceOfHire: String
     noticePeriod: String
 
-    # Personal Information (Required: 2 fields)
-    dateOfBirth: String!
-    gender: String!
-    
+    # Personal Information (Optional for partial saves)
+    dateOfBirth: String
+    gender: String
+
     # Optional personal fields
     fatherName: String
     age: Int
@@ -137,10 +153,10 @@ type Employee {
     ifscCode: String
     paymentMode: String
 
-    # Statutory Documents (Required: 2 fields)
-    aadharNo: String!
-    panNo: String!
-    
+    # Statutory Documents (Optional for partial saves)
+    aadharNo: String
+    panNo: String
+
     # Optional statutory
     passportNo: String
     dlNo: String
@@ -209,10 +225,10 @@ input EmployeeInput {
     sourceOfHire: String
     noticePeriod: String
 
-    # Personal Information (Required: 2 fields)
-    dateOfBirth: String!
-    gender: String!
-    
+    # Personal Information (Optional for partial saves)
+    dateOfBirth: String
+    gender: String
+
     # Optional personal
     fatherName: String
     age: Int
@@ -247,10 +263,10 @@ input EmployeeInput {
     ifscCode: String
     paymentMode: String
 
-    # Statutory Documents (Required: 2 fields)
-    aadharNo: String!
-    panNo: String!
-    
+    # Statutory Documents (Optional for partial saves)
+    aadharNo: String
+    panNo: String
+
     # Optional statutory
     passportNo: String
     dlNo: String
@@ -293,4 +309,18 @@ type EmployeePageResponse {
     pageSize: Int!
     hasNext: Boolean!
     hasPrevious: Boolean!
+}
+
+# =====================================================
+# NEW: Manager Selection Option Type
+# =====================================================
+
+type ManagerOption {
+    id: ID!                                    # Employee ID (database primary key)
+    empId: String!                             # Employee ID (business identifier)
+    employeeName: String!                      # Display name
+    designation: Designation                   # Manager's designation
+    department: Department                     # Manager's department
+    role: String!                              # User role (MANAGER, ADMIN)
+    isActive: Boolean!                         # Whether user account is active
 }

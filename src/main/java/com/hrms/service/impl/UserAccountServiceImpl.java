@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for User Account operations
@@ -225,7 +226,17 @@ public class UserAccountServiceImpl implements UserAccountService {
 
     @Override
     public List<UserAccountResponse> getUsersByTenant(String tenantId) {
-        List<UserAccount> users = userAccountRepository.findByTenantIdAndDeletedAtIsNull(tenantId);
+        List<UserAccount> allUsers = userAccountRepository.findByTenantIdAndDeletedAtIsNull(tenantId);
+        List<UserAccount> users = allUsers.stream()
+            .filter(ua -> ua.getEmployeeId() != null)
+            .collect(Collectors.toList());
+
+        if (allUsers.size() > users.size()) {
+            long filteredCount = allUsers.size() - users.size();
+            log.warn("Filtered {} user account(s) with null employeeId from tenant: {}. " +
+                    "This indicates data integrity issues that should be addressed.", filteredCount, tenantId);
+        }
+
         return mapper.toResponseList(users);
     }
 

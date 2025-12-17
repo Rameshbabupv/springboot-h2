@@ -1,18 +1,22 @@
 package com.hrms.service.impl;
 
 import com.hrms.dto.request.DepartmentRequest;
+import com.hrms.dto.request.OrganizationalScopeDTO;
 import com.hrms.entity.Department;
 import com.hrms.exception.DuplicateResourceException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.DepartmentRepository;
 import com.hrms.service.DepartmentService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Department operations with comprehensive validation.
@@ -24,6 +28,7 @@ import java.util.Optional;
 public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     @Override
     public List<Department> getAllDepartments() {
@@ -143,6 +148,45 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public boolean existsById(Long id) {
         return departmentRepository.existsById(id);
+    }
+
+    @Override
+    public List<Department> getDepartmentsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentDepartmentId) {
+        log.debug("Fetching departments for selection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, isEditMode);
+
+        // Get user's organizational scope
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getDepartmentIds() != null && !userScope.getDepartmentIds().isEmpty()) {
+            allowedIds = userScope.getDepartmentIds();
+        }
+
+        // Fetch scoped departments
+        List<Department> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Super admin - get all active departments
+            scopedList = departmentRepository.findByTenantIdAndIsActiveTrue(tenantId);
+        } else {
+            // Scoped user - get only allowed departments
+            scopedList = departmentRepository.findByTenantIdAndIdInAndIsActiveTrue(tenantId, allowedIds);
+        }
+
+        // In edit mode, include current value even if outside scope
+        if (isEditMode && currentDepartmentId != null) {
+            boolean found = scopedList.stream().anyMatch(d -> d.getId().equals(currentDepartmentId));
+            if (!found) {
+                departmentRepository.findById(currentDepartmentId).ifPresent(scopedList::add);
+            }
+        }
+
+        // Sort by name
+        List<Department> result = scopedList.stream()
+                .sorted(Comparator.comparing(Department::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} departments for selection", result.size());
+        return result;
     }
 
     private Department mapToEntity(DepartmentRequest request) {

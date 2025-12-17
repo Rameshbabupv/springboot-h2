@@ -1,7 +1,9 @@
 package com.hrms.service;
 
+import com.hrms.dto.request.EmployeeOrgCriteriaDTO;
 import com.hrms.dto.request.EmployeeTemplateRequest;
 import com.hrms.dto.request.TemplateCriteriaRequest;
+import com.hrms.dto.response.ApplicableTemplateResponse;
 import com.hrms.dto.response.AvailableCriteriaResponse;
 import com.hrms.dto.response.ConflictingTemplate;
 import com.hrms.dto.response.EmployeeTemplateResponse;
@@ -52,4 +54,14 @@ public interface EmployeeTemplateService {
         EmployeeTemplateRequest request,
         Long excludeTemplateId
     );
+
+    /**
+     * Find applicable employee template based on organizational criteria.
+     * Used during employee creation/edit to determine required/optional fields dynamically.
+     *
+     * @param tenantId Tenant identifier
+     * @param criteria Organizational criteria (company, location, department, designation, jobFunction, employmentType, division, section, grade)
+     * @return Applicable template response with field configuration, or null if no template matches
+     */
+    ApplicableTemplateResponse findApplicableTemplate(String tenantId, EmployeeOrgCriteriaDTO criteria);
 }

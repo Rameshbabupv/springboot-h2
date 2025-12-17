@@ -2,10 +2,12 @@ package com.hrms.graphql.resolver;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hrms.dto.request.EmployeeOrgCriteriaDTO;
 import com.hrms.dto.request.EmployeeTemplateFieldRequest;
 import com.hrms.dto.request.EmployeeTemplateRequest;
 import com.hrms.dto.request.EmployeeTemplateSectionRequest;
 import com.hrms.dto.request.FieldDefinitionMasterRequest;
+import com.hrms.dto.response.ApplicableTemplateResponse;
 import com.hrms.dto.response.EmployeeTemplateFieldResponse;
 import com.hrms.dto.response.EmployeeTemplateResponse;
 import com.hrms.dto.response.EmployeeTemplateSectionResponse;
@@ -93,6 +95,69 @@ public class EmployeeTemplateResolver {
         } catch (Exception e) {
             log.error("Error fetching available criteria", e);
             throw new RuntimeException("Failed to fetch available criteria: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Find applicable employee template based on organizational criteria
+     * Used during employee creation/edit to determine required/optional fields
+     */
+    @QueryMapping
+    public ApplicableTemplateResponse applicableEmployeeTemplate(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String companyId,
+            @Argument String locationId,
+            @Argument String departmentId,
+            @Argument String designationId,
+            @Argument String jobFunctionId,
+            @Argument String employmentTypeId,
+            @Argument String divisionId,
+            @Argument String sectionId,
+            @Argument String gradeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+
+        log.debug("Finding applicable template - tenantId: {}, company: {}, location: {}, department: {}, " +
+                  "designation: {}, jobFunction: {}, employmentType: {}, division: {}, section: {}, grade: {}",
+                  tenantId, companyId, locationId, departmentId, designationId, jobFunctionId,
+                  employmentTypeId, divisionId, sectionId, gradeId);
+
+        try {
+            // Build criteria from GraphQL arguments
+            EmployeeOrgCriteriaDTO criteria = EmployeeOrgCriteriaDTO.builder()
+                    .companyId(Long.parseLong(companyId))
+                    .locationId(Long.parseLong(locationId))
+                    .departmentId(Long.parseLong(departmentId))
+                    .designationId(Long.parseLong(designationId))
+                    .jobFunctionId(Long.parseLong(jobFunctionId))
+                    .employmentTypeId(Long.parseLong(employmentTypeId))
+                    .divisionId(divisionId != null ? Long.parseLong(divisionId) : null)
+                    .sectionId(sectionId != null ? Long.parseLong(sectionId) : null)
+                    .gradeId(gradeId != null ? Long.parseLong(gradeId) : null)
+                    .build();
+
+            // Find applicable template
+            ApplicableTemplateResponse response = employeeTemplateService.findApplicableTemplate(tenantId, criteria);
+
+            if (response != null) {
+                log.info("Found applicable template - templateId: {}, templateName: {}, requiredFields: {}, " +
+                         "optionalFields: {}, customFields: {}, sectionCount: {}",
+                         response.getTemplateId(), response.getTemplateName(),
+                         response.getRequiredFields() != null ? response.getRequiredFields().size() : 0,
+                         response.getOptionalFields() != null ? response.getOptionalFields().size() : 0,
+                         response.getCustomFields() != null ? response.getCustomFields().size() : 0,
+                         response.getSectionCount());
+            } else {
+                log.info("No applicable template found for the given criteria");
+            }
+
+            return response;
+
+        } catch (NumberFormatException e) {
+            log.error("Invalid ID format in applicable template query", e);
+            throw new RuntimeException("Invalid ID format: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Error finding applicable template", e);
+            throw new RuntimeException("Failed to find applicable template: " + e.getMessage());
         }
     }
 

@@ -69,6 +69,27 @@ public class JobFunctionResolver {
         return jobFunctionService.searchJobFunctions(tenantId, searchTerm);
     }
 
+    /**
+     * Get job functions for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<JobFunction> jobFunctionsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentJobFunctionId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentJobFunctionId != null ? Long.parseLong(currentJobFunctionId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: jobFunctionsForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<JobFunction> result = jobFunctionService.getJobFunctionsForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: jobFunctionsForSelection - returned {} job functions", result.size());
+        return result;
+    }
+
     @MutationMapping
     public JobFunction createJobFunction(@Argument JobFunctionInput input) {
         String tenantId = input.getTenantId() != null

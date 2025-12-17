@@ -29,4 +29,15 @@ public interface DepartmentService {
     void deleteDepartment(Long id);
 
     boolean existsById(Long id);
+
+    /**
+     * Get departments for selection with organizational scope filtering.
+     *
+     * @param tenantId Tenant ID
+     * @param userId User ID for scope filtering
+     * @param isEditMode Whether in edit mode (to include current value)
+     * @param currentDepartmentId Current department ID (for edit mode)
+     * @return List of departments within user's scope
+     */
+    List<Department> getDepartmentsForSelection(String tenantId, Long userId, boolean isEditMode, Long currentDepartmentId);
 }

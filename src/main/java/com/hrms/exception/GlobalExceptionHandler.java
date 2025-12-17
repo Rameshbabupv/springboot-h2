@@ -92,6 +92,63 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
+    /**
+     * Handle employee validation exception with aggregated field errors
+     */
+    @ExceptionHandler(EmployeeValidationException.class)
+    public ResponseEntity<ErrorResponse> handleEmployeeValidationException(
+            EmployeeValidationException ex, HttpServletRequest request) {
+        log.error("Employee validation failed: {}", ex.getMessage());
+
+        // Convert EmployeeValidationException.FieldError to ErrorResponse.FieldError
+        List<ErrorResponse.FieldError> fieldErrors = ex.getFieldErrors()
+                .stream()
+                .map(error -> ErrorResponse.FieldError.builder()
+                        .field(error.getFieldName())
+                        .message(error.getErrorMessage())
+                        .rejectedValue(error.getRejectedValue())
+                        .build())
+                .collect(Collectors.toList());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .success(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Employee Validation Failed")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .fieldErrors(fieldErrors)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handle date validation exception with specific field and invalid value
+     */
+    @ExceptionHandler(DateValidationException.class)
+    public ResponseEntity<ErrorResponse> handleDateValidationException(
+            DateValidationException ex, HttpServletRequest request) {
+        log.error("Date validation failed for field '{}': {}", ex.getFieldName(), ex.getMessage());
+
+        // Create a single field error for the date validation failure
+        ErrorResponse.FieldError fieldError = ErrorResponse.FieldError.builder()
+                .field(ex.getFieldName())
+                .message(ex.getMessage())
+                .rejectedValue(ex.getInvalidValue())
+                .build();
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .success(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Date Validation Failed")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .fieldErrors(List.of(fieldError))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {

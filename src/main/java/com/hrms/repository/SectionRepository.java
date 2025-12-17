@@ -55,4 +55,7 @@ public interface SectionRepository extends JpaRepository<Section, Long> {
         @Param("departmentId") Long departmentId,
         @Param("searchTerm") String searchTerm
     );
+
+    // Scope-aware query
+    List<Section> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

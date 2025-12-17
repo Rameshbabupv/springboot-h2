@@ -49,6 +49,27 @@ public class GradeResolver {
         return gradeService.searchGrades(tenantId, searchTerm);
     }
 
+    /**
+     * Get grades for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<Grade> gradesForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentGradeId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentGradeId != null ? Long.parseLong(currentGradeId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: gradesForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<Grade> result = gradeService.getGradesForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: gradesForSelection - returned {} grades", result.size());
+        return result;
+    }
+
     @MutationMapping
     public Grade createGrade(@Argument GradeInput input) {
         String tenantId = input.getTenantId() != null

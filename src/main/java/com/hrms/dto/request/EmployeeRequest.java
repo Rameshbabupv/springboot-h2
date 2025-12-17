@@ -83,7 +83,8 @@ public class EmployeeRequest {
 
     // Optional personal fields
     private String fatherName;
-    private Integer age;
+    // NOTE: age is NOT in DTO - it is calculated from dateOfBirth by backend via calculateAge() method
+    // Do NOT add age field here as it will overwrite the calculated value
     private String bloodGroup;
     private String maritalStatus;
     private String religion;

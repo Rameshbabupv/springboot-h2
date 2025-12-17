@@ -6,13 +6,16 @@ import com.hrms.exception.BadRequestException;
 import com.hrms.exception.ResourceNotFoundException;
 import com.hrms.repository.*;
 import com.hrms.service.CompanyService;
+import com.hrms.service.OrganizationalScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service implementation for Company operations.
@@ -28,6 +31,7 @@ public class CompanyServiceImpl implements CompanyService {
     private final CompanyGeneralSettingsRepository generalSettingsRepository;
     private final CompanyLocationRepository locationRepository;
     private final CompanyBankAccountRepository bankAccountRepository;
+    private final OrganizationalScopeService organizationalScopeService;
 
     // Dependency validation repositories (for deleteCompany constraint checks)
     // Only repositories for entities with company relationship (NOT tenant-wide masters)
@@ -325,6 +329,45 @@ public class CompanyServiceImpl implements CompanyService {
         locationRepository.deleteById(id);
 
         log.info("Deleted location with id: {}", id);
+    }
+
+    @Override
+    public List<CompanyLocation> getLocationsForSelection(String tenantId, Long userId, Long companyId, boolean isEditMode, Long currentLocationId) {
+        log.debug("Fetching locations for selection - tenantId: {}, userId: {}, companyId: {}, editMode: {}", tenantId, userId, companyId, isEditMode);
+
+        // Get user's organizational scope
+        OrganizationalScopeDTO userScope = organizationalScopeService.getUserScope(tenantId, userId);
+        List<Long> allowedIds = null;
+
+        if (userScope != null && userScope.getLocationIds() != null && !userScope.getLocationIds().isEmpty()) {
+            allowedIds = userScope.getLocationIds();
+        }
+
+        // Fetch scoped locations - special case: filter by companyId first
+        List<CompanyLocation> scopedList;
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Super admin - get all active locations for the company
+            scopedList = locationRepository.findByCompanyIdAndIsActiveTrue(companyId);
+        } else {
+            // Scoped user - get only allowed locations for the company
+            scopedList = locationRepository.findByCompanyIdAndIdInAndIsActiveTrue(companyId, allowedIds);
+        }
+
+        // In edit mode, include current value even if outside scope
+        if (isEditMode && currentLocationId != null) {
+            boolean found = scopedList.stream().anyMatch(l -> l.getId().equals(currentLocationId));
+            if (!found) {
+                locationRepository.findById(currentLocationId).ifPresent(scopedList::add);
+            }
+        }
+
+        // Sort by name
+        List<CompanyLocation> result = scopedList.stream()
+                .sorted(Comparator.comparing(CompanyLocation::getName))
+                .collect(Collectors.toList());
+
+        log.info("Fetched {} locations for selection", result.size());
+        return result;
     }
 
     // ==================== Bank Accounts ====================

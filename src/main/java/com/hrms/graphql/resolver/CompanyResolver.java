@@ -163,6 +163,31 @@ public class CompanyResolver {
         return result;
     }
 
+    /**
+     * Get locations for selection with organizational scope filtering.
+     * Special case: filters by companyId first, then applies organizational scope.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<CompanyLocation> locationsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument String companyId,
+            @Argument Boolean isEditMode,
+            @Argument String currentLocationId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long companyIdLong = Long.parseLong(companyId);
+        Long currentIdLong = currentLocationId != null ? Long.parseLong(currentLocationId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: locationsForSelection - tenantId: {}, userId: {}, companyId: {}, editMode: {}",
+                  tenantId, userId, companyId, editMode);
+        List<CompanyLocation> result = companyService.getLocationsForSelection(tenantId, userIdLong, companyIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: locationsForSelection - returned {} locations", result.size());
+        return result;
+    }
+
     @MutationMapping
     public CompanyLocation createCompanyLocation(@Argument Long companyId, @Argument CompanyLocationInput input) {
         log.debug("GraphQL Mutation: createCompanyLocation - companyId: {}, name: {}", companyId, input.getName());

@@ -29,4 +29,7 @@ public interface EmploymentTypeRepository extends JpaRepository<EmploymentType, 
            "OR LOWER(e.code) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<EmploymentType> searchEmploymentTypes(@Param("tenantId") String tenantId, @Param("searchTerm") String searchTerm);
+
+    // Scope-aware query
+    List<EmploymentType> findByTenantIdAndIdInAndIsActiveTrue(String tenantId, List<Long> ids);
 }

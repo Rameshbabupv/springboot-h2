@@ -55,6 +55,27 @@ public class DivisionResolver {
         return divisionService.searchDivisions(tenantId, searchTerm);
     }
 
+    /**
+     * Get divisions for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<Division> divisionsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentDivisionId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentDivisionId != null ? Long.parseLong(currentDivisionId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: divisionsForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<Division> result = divisionService.getDivisionsForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: divisionsForSelection - returned {} divisions", result.size());
+        return result;
+    }
+
     @MutationMapping
     public Division createDivision(@Argument DivisionInput input) {
         String tenantId = input.getTenantId() != null

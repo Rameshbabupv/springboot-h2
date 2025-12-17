@@ -2,6 +2,7 @@ package com.hrms.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hrms.dto.request.EmployeeOrgCriteriaDTO;
 import com.hrms.dto.request.EmployeeTemplateRequest;
 import com.hrms.dto.request.TemplateCriteriaRequest;
 import com.hrms.dto.response.*;
@@ -839,6 +840,222 @@ public class EmployeeTemplateServiceImpl implements EmployeeTemplateService {
                     .map(ConflictingTemplate::getTemplateName)
                     .collect(Collectors.joining(", "))
             );
+        }
+    }
+
+
+    @Override
+    public ApplicableTemplateResponse findApplicableTemplate(String tenantId, EmployeeOrgCriteriaDTO criteria) {
+        log.debug("Finding applicable template for tenantId: {}, criteria: {}", tenantId, criteria);
+
+        try {
+            // Fetch all active templates for the tenant
+            List<EmployeeTemplate> templates = templateRepository.findByTenantIdAndIsActive(tenantId, true);
+
+            if (templates.isEmpty()) {
+                log.info("No active templates found for tenant: {}", tenantId);
+                return null;
+            }
+
+            LocalDate currentDate = LocalDate.now();
+
+            // Find matching template based on organizational criteria
+            Optional<EmployeeTemplate> matchedTemplate = templates.stream()
+                    .filter(t -> isWithinEffectiveDateRange(t, currentDate))
+                    .filter(t -> matchesAllCriteria(t, criteria))
+                    .min(Comparator.comparingInt(EmployeeTemplate::getPriority))
+                    .or(() -> templates.stream()
+                            .filter(t -> isWithinEffectiveDateRange(t, currentDate))
+                            .filter(t -> t.getIsDefault() != null && t.getIsDefault())
+                            .findFirst());
+
+            if (matchedTemplate.isEmpty()) {
+                log.info("No applicable template found for criteria: {}", criteria);
+                return null;
+            }
+
+            EmployeeTemplate template = matchedTemplate.get();
+            log.info("Found applicable template - templateId: {}, templateName: {}", 
+                     template.getId(), template.getTemplateName());
+
+            return buildApplicableTemplateResponse(template);
+
+        } catch (Exception e) {
+            log.error("Error finding applicable template for tenant: {}, criteria: {}", tenantId, criteria, e);
+            throw new RuntimeException("Failed to find applicable template: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Check if template is within effective date range
+     */
+    private boolean isWithinEffectiveDateRange(EmployeeTemplate template, LocalDate currentDate) {
+        LocalDate effectiveFrom = template.getEffectiveFrom();
+        LocalDate effectiveTo = template.getEffectiveTo();
+
+        // No date restrictions
+        if (effectiveFrom == null && effectiveTo == null) {
+            return true;
+        }
+
+        // Check from date
+        if (effectiveFrom != null && currentDate.isBefore(effectiveFrom)) {
+            return false;
+        }
+
+        // Check to date
+        if (effectiveTo != null && currentDate.isAfter(effectiveTo)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if template matches all organizational criteria
+     * Criteria matching logic: if template has criteria defined, current value must be in that list
+     */
+    private boolean matchesAllCriteria(EmployeeTemplate template, EmployeeOrgCriteriaDTO criteria) {
+        // Check Company match (companies stored as List<Long>)
+        if (!matchesCriteriaLong(template.getApplicableCompanies(), criteria.getCompanyId())) {
+            return false;
+        }
+
+        // Check Location match (locations stored as List<Long>)
+        if (!matchesCriteriaLong(template.getApplicableLocations(), criteria.getLocationId())) {
+            return false;
+        }
+
+        // Check Division match (divisions stored as List<String>)
+        if (criteria.getDivisionId() != null &&
+            !matchesCriteriaString(template.getApplicableDivisions(), criteria.getDivisionId().toString())) {
+            return false;
+        }
+
+        // Check Department match (departments stored as List<String>)
+        if (!matchesCriteriaString(template.getApplicableDepartments(), criteria.getDepartmentId().toString())) {
+            return false;
+        }
+
+        // Check Section match (sections stored as List<String>)
+        if (criteria.getSectionId() != null &&
+            !matchesCriteriaString(template.getApplicableSections(), criteria.getSectionId().toString())) {
+            return false;
+        }
+
+        // Check Designation match (designations stored as List<String>)
+        if (!matchesCriteriaString(template.getApplicableDesignations(), criteria.getDesignationId().toString())) {
+            return false;
+        }
+
+        // Check Grade match (grades stored as List<String>)
+        if (criteria.getGradeId() != null &&
+            !matchesCriteriaString(template.getApplicableGrades(), criteria.getGradeId().toString())) {
+            return false;
+        }
+
+        // Check Job Function match (jobFunctions stored as List<String>)
+        if (!matchesCriteriaString(template.getApplicableJobFunctions(), criteria.getJobFunctionId().toString())) {
+            return false;
+        }
+
+        // Check Employment Type match (employmentTypes stored as List<String>)
+        if (!matchesCriteriaString(template.getApplicableEmploymentTypes(), criteria.getEmploymentTypeId().toString())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if criteria value (Long) matches template's criteria list
+     * If criteria list is empty/null, it matches (template applies to all values)
+     * If criteria list has values, current value must be in the list
+     */
+    private boolean matchesCriteriaLong(List<Long> criteriaList, Long criteriaValue) {
+        if (criteriaList == null || criteriaList.isEmpty()) {
+            // No restriction = matches
+            return true;
+        }
+        // Has restriction = must be in list
+        return criteriaList.contains(criteriaValue);
+    }
+
+    /**
+     * Check if criteria value (String) matches template's criteria list
+     * If criteria list is empty/null, it matches (template applies to all values)
+     * If criteria list has values, current value must be in the list
+     */
+    private boolean matchesCriteriaString(List<String> criteriaList, String criteriaValue) {
+        if (criteriaList == null || criteriaList.isEmpty()) {
+            // No restriction = matches
+            return true;
+        }
+        // Has restriction = must be in list
+        return criteriaList.contains(criteriaValue);
+    }
+
+    /**
+     * Build ApplicableTemplateResponse from EmployeeTemplate entity
+     */
+    private ApplicableTemplateResponse buildApplicableTemplateResponse(EmployeeTemplate template) {
+        try {
+            // Extract field configuration from template sections
+            List<TemplateSectionSummary> sections = new ArrayList<>();
+            List<String> requiredFields = new ArrayList<>();
+            List<String> optionalFields = new ArrayList<>();
+            List<String> customFields = new ArrayList<>();
+
+            if (template.getSections() != null) {
+                for (EmployeeTemplateSection section : template.getSections()) {
+                    // Build section summary
+                    Integer fieldCount = section.getFields() != null ? section.getFields().size() : 0;
+                    TemplateSectionSummary sectionSummary = TemplateSectionSummary.builder()
+                            .sectionName(section.getSectionName())
+                            .sectionCode(section.getSectionCode())
+                            .fieldCount(fieldCount)
+                            .build();
+                    sections.add(sectionSummary);
+
+                    // Collect field information
+                    if (section.getFields() != null) {
+                        for (com.hrms.entity.EmployeeTemplateField templateField : section.getFields()) {
+                            // Get field name from the related FieldDefinitionMaster
+                            String fieldName = templateField.getField() != null ?
+                                    templateField.getField().getFieldName() : "Unknown";
+
+                            if (Boolean.TRUE.equals(templateField.getIsRequired())) {
+                                requiredFields.add(fieldName);
+                            } else {
+                                optionalFields.add(fieldName);
+                            }
+
+                            // Custom fields indicated by isCustomField flag
+                            if (templateField.getField() != null &&
+                                Boolean.TRUE.equals(templateField.getField().getIsCustomField())) {
+                                customFields.add(fieldName);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ApplicableTemplateResponse.builder()
+                    .templateId(template.getId())
+                    .templateName(template.getTemplateName())
+                    .templateCode(template.getTemplateCode())
+                    .description(template.getDescription())
+                    .priority(template.getPriority() != null ? template.getPriority() : 0)
+                    .requiredFields(requiredFields)
+                    .optionalFields(optionalFields)
+                    .customFields(customFields)
+                    .sectionCount(sections.size())
+                    .sections(sections)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error building applicable template response for template: {}", template.getId(), e);
+            throw new RuntimeException("Failed to build template response: " + e.getMessage(), e);
         }
     }
 }

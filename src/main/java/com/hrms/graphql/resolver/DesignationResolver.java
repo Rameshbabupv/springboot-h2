@@ -55,6 +55,27 @@ public class DesignationResolver {
         return designationService.searchDesignations(tenantId, searchTerm);
     }
 
+    /**
+     * Get designations for selection with organizational scope filtering.
+     * Supports edit mode to include current value even if outside scope.
+     */
+    @QueryMapping
+    public List<Designation> designationsForSelection(
+            @Argument(name = "tenantId") String tenantIdArg,
+            @Argument String userId,
+            @Argument Boolean isEditMode,
+            @Argument String currentDesignationId) {
+        String tenantId = jwtClaimsExtractor.getTenantIdOrFallback(tenantIdArg);
+        Long userIdLong = Long.parseLong(userId);
+        Long currentIdLong = currentDesignationId != null ? Long.parseLong(currentDesignationId) : null;
+        boolean editMode = isEditMode != null && isEditMode;
+
+        log.debug("GraphQL Query: designationsForSelection - tenantId: {}, userId: {}, editMode: {}", tenantId, userId, editMode);
+        List<Designation> result = designationService.getDesignationsForSelection(tenantId, userIdLong, editMode, currentIdLong);
+        log.info("GraphQL Response: designationsForSelection - returned {} designations", result.size());
+        return result;
+    }
+
     @MutationMapping
     public Designation createDesignation(@Argument DesignationInput input) {
         String tenantId = input.getTenantId() != null
