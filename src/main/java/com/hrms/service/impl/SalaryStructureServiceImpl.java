@@ -359,7 +359,7 @@ public class SalaryStructureServiceImpl implements SalaryStructureService {
 
         // Validation 10: Warning if no statutory contributions
         if (totalStatutory.compareTo(BigDecimal.ZERO) == 0) {
-            warnings.add("No statutory contributions (employer) configured. CTC = Gross Salary.");
+            warnings.add("No employer statutory contributions configured (PF, ESI, etc). Add statutory components to reflect full CTC.");
         }
 
         boolean isValid = errors.isEmpty();
