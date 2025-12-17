@@ -34,9 +34,10 @@ public class CorsConfig {
 
                 String origin = request.getHeader("Origin");
 
-                // Allow all localhost origins
+                // Allow localhost and local network origins
                 if (origin != null && (origin.startsWith("http://localhost:") ||
-                                       origin.startsWith("http://127.0.0.1:"))) {
+                                       origin.startsWith("http://127.0.0.1:") ||
+                                       origin.startsWith("http://192.168."))) {
                     response.setHeader("Access-Control-Allow-Origin", origin);
                     response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD");
                     response.setHeader("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With");

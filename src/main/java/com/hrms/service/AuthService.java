@@ -197,15 +197,10 @@ public class AuthService {
         try {
             log.info("Processing login for user: {}", request.getUsername());
 
-            // Step 1: Authenticate with Keycloak and get JWT
-            Map<String, Object> tokenResponse = keycloakService.getToken(
-                request.getUsername(),
-                request.getPassword()
-            );
-
-            String accessToken = (String) tokenResponse.get("access_token");
-            String refreshToken = (String) tokenResponse.get("refresh_token");
-            Integer expiresIn = (Integer) tokenResponse.get("expires_in");
+            // Step 1: Authenticate with Keycloak (validates credentials)
+            // Note: This token won't have all claims yet - we'll get a fresh one after updating attributes
+            keycloakService.getToken(request.getUsername(), request.getPassword());
+            log.info("Credentials validated for user: {}", request.getUsername());
 
             // Step 2: Get user from database
             UserAccount user = userAccountRepository.findByUsername(request.getUsername())
@@ -253,7 +248,17 @@ public class AuthService {
             attributes.put("current_company_id", currentCompanyId.toString());
             keycloakService.updateUserAttributes(user.getKeycloakUserId(), attributes);
 
-            // Step 7: Build auth response with actual JWT
+            // Step 7: Get fresh token with updated attributes (JWT now contains all claims)
+            Map<String, Object> freshTokenResponse = keycloakService.getToken(
+                request.getUsername(),
+                request.getPassword()
+            );
+            String accessToken = (String) freshTokenResponse.get("access_token");
+            String refreshToken = (String) freshTokenResponse.get("refresh_token");
+            Integer expiresIn = (Integer) freshTokenResponse.get("expires_in");
+            log.info("Fresh token obtained with updated claims for user: {}", request.getUsername());
+
+            // Step 8: Build auth response with fresh JWT containing all claims
             AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
